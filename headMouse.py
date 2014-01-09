@@ -9,6 +9,7 @@ import serial
 import time
 
 import hmCam
+import hmFilterData as filter
 
 CAMERA_ID = 0
 ARDUINO_PORT = 'COM7'
@@ -19,16 +20,15 @@ if __name__ == "__main__":
 
     hmCam.bind(CAMERA_ID)
 
-    currentX = 0
-    currentY = 0
-    oldX = 0
-    oldY = 0
-    diffX = 0
-    diffY = 0
+    move_gen = filter.relative_movement()
+    move_gen.send(None)
+    sub_pix_gen = filter.sub_pix_trunc()
+    sub_pix_gen.send(None)
 
     startTime = time.time()
     timeC = 0
     loops = 0
+
 
     while(True):
         loops += 1
@@ -41,18 +41,33 @@ if __name__ == "__main__":
         startTime = time.time()
         # Capture frame-by-frame
 
-        currentX, currentY = hmCam.popAndAnalyze()
+        coords = hmCam.popAndAnalyze()
 
-        diffX = (currentX - oldX) * 2
-        diffY = (currentY - oldY) * 2
+        ### Filter Section ###
+        #Take absolute position return relative position
+        coords = move_gen.send(coords)
+        #Subpixel info
+        coords = sub_pix_gen.send(coords)
 
-        oldX = currentX
-        oldY = currentY
+        #Convert this to an acceleration filter
+        x = coords[0] * 6
+        y = coords[1] * 6
 
-        #print "x and y diffs are %s, %s" % (diffX, diffY)
+        x = -(x)
 
-        if( diffX != 0 and diffY != 0):
-            arduino.write("32100\n" + str(int(-(diffX * 3))) + "\n" + str(int(diffY * 3)) + "\n")
+
+        #Duplicate in Arduino
+        x = str(int(x))
+        y = str(int(y))
+
+
+        #print "coords are:" + x + ", " + y
+
+
+        if( x != 0 or y != 0):
+            arduino.write("32100\n" + x + "\n" + y + "\n")
+
+
 
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break

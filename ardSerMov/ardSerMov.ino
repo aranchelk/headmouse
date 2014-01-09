@@ -4,33 +4,37 @@ int controlM = 0;
 
 void setup() {                
   delay(3000);
-  Serial.begin(9600);
+  Serial1.begin(9600);
   Mouse.begin();
+  for(int i = 0; i<100; i++){
+    delay(5);
+    Mouse.move(1,1,0);
+  }
 }
 
 void loop() {
-  if (Serial.available() > 0) {
+  if (Serial1.available() > 0) {
     //We're parsing serial into integers
     //Values greater than 32000 are control messages, less are data
     // Get initial value
     
     if(controlM == 0 ){
-      serValue = Serial.parseInt();
+      serValue = Serial1.parseInt();
     }
     
     if(serValue == 32001){
-      //Serial.println("Break.");
+      //Serial1.println("Break.");
       controlM = 0;
     }
     else if(serValue == 32100){
-      //Serial.println("Mouse Move");
-      int x = Serial.parseInt();
-      int y = Serial.parseInt();
+      //Serial1.println("Mouse Move");
+      int x = Serial1.parseInt();
+      int y = Serial1.parseInt();
 
       mouseMove(x, y);
     }
     else{
-      //Serial.println("Unknown control message.");
+      //Serial1.println("Unknown control message.");
       controlM = 0;
     }
   }
@@ -38,11 +42,11 @@ void loop() {
 
 void mouseMove(int x, int y){
  
-    //Serial.println("Values for x and y:");
-    //Serial.print(x);
-    //Serial.println("");
-    //Serial.print(y);
-    //Serial.println("");
+    //Serial1.println("Values for x and y:");
+    //Serial1.print(x);
+    //Serial1.println("");
+    //Serial1.print(y);
+    //Serial1.println("");
     Mouse.move(x, y, 0);
   
 }

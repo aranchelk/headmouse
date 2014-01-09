@@ -1,3 +1,9 @@
+#!/usr/bin/env python
+#coding=utf8
+'''
+Headmouse OpenCV wrapper module
+'''
+
 import cv2
 
 #Todo: Separate camera setup for algorithm setup.
@@ -45,7 +51,7 @@ def popAndAnalyze():
         #img = cv2.drawKeypoints(img,kp,color=(0,255,0), flags=0)
         cv2.imshow('frame',img)
 
-    return x, y
+    return [x, y]
 
 def cleanup():
     cap.release()
