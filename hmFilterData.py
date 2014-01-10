@@ -1,41 +1,49 @@
 import math
 
+def consumer(func):
+    '''
+    Decorator taking care of initial next() call to "sending" generators
+
+    From PEP-342
+    http://www.python.org/dev/peps/pep-0342/
+    '''
+    def wrapper(*args,**kw):
+        gen = func(*args, **kw)
+        next(gen)
+        return gen
+    wrapper.__name__ = func.__name__
+    wrapper.__dict__ = func.__dict__
+    wrapper.__doc__  = func.__doc__
+    return wrapper
+
+@consumer
 def relative_movement():
     old_coords = [0,0]
     new_coords = [0,0]
     diff_coords = [0,0]
 
     while True:
-        new_coords = yield diff_coords
-        diff_coords[0] = new_coords[0] - old_coords[0]
-        diff_coords[1] = new_coords[1] - old_coords[1]
-        old_coords = new_coords
+        x, y = yield diff_coords
+        if x is None or y is None:
+            x, y = 0, 0
+        diff_coords[0] = x - old_coords[0]
+        diff_coords[1] = y - old_coords[1]
+        old_coords = x, y
+
 
 def get_int_and_remainder(num):
-    neg = False
+    return int(num), num - int(num)
 
-    if num < 0:
-        neg = True
-        num = -(num)
-
-    integer_component = int(num)
-
-    decimal_component = num
-    while decimal_component > 1:
-        decimal_component -= 1
-
-    if neg is True:
-        integer_component = -(integer_component)
-        decimal_component = -(decimal_component)
-
-    return integer_component, decimal_component
-
-
+@consumer
 def sub_pix_trunc():
-    #This generator truncates values with decimals to integers
-    #It stores the remainder and adds it to the next value given on next pass
-    #In that way it simulates a greater internal resolution
-    #See Microsoft's paper on mouse ballistics, look for UoM Mickey
+    '''
+    Subpixel truncator
+
+    This generator truncates values with decimals to integers
+    It stores the remainder and adds it to the next value given on next pass
+    In that way it simulates a greater internal resolution
+    See Microsoft's paper on mouse ballistics, look for UoM Mickey
+    '''
 
     remainders = [0,0]
     trunc_coords = [0,0]
@@ -49,5 +57,85 @@ def sub_pix_trunc():
         aug_coords[0] = orig_coords[0] + remainders[0]
         aug_coords[1] = orig_coords[1] + remainders[1]
 
-        trunc_coords[0], remainders[0] = get_int_and_remainder(orig_coords[0])
-        trunc_coords[1], remainders[1] = get_int_and_remainder(orig_coords[1])
+        trunc_coords[0], remainders[0] = get_int_and_remainder(aug_coords[0])
+        trunc_coords[1], remainders[1] = get_int_and_remainder(aug_coords[1])
+
+@consumer
+def ema(alpha):
+    out = 0
+    while True:
+        in_ = yield out
+        out = in_ * alpha + out * (1 - alpha)
+
+@consumer
+def ema_smoother(alpha=0.5):
+    v_out = 0
+    ema_x, ema_y = ema(alpha), ema(alpha)
+
+    while True:
+        x_in, y_in = yield v_out
+        v_out = ema_x.send(x_in), ema_y.send(y_in)
+
+@consumer
+def slow_smoother(alpha=0.5):
+    smoother = ema_smoother(alpha)
+    v_out = (0,0)
+    v = (0,0)
+
+    while True:
+        last_v = v
+        v, max_smooth = yield v_out
+        v_mag = (v[0] ** 2 + v[1] ** 2 ) ** 0.5
+        #print v_mag
+        v_smooth = smoother.send(v)
+
+        if v_mag < max_smooth:
+            v_out = v_smooth
+        else:
+            v_out = v
+            #print "### Fast, no smoothing ###"
+
+
+
+@consumer
+def stateful_smoother():
+    #Operates similar to sub_pix_trunc, except in never returns partial values, if activated, it stores the value and
+    #and returns nothing
+    threshold = [1.3, 1.3]
+    stored_coords = [0,0]
+    aug_coords = [0,0]
+
+    while True:
+        orig_coords = yield aug_coords
+
+        for i in range(2):
+            print i
+            if math.fabs(orig_coords[i] + stored_coords[i]) > threshold[i]:
+                aug_coords[i] = orig_coords[i]
+                stored_coords[i] = 0
+            else:
+                stored_coords[i] += orig_coords[i]
+                aug_coords[i] = 0
+
+
+def accelerate(coords):
+    return [6 * coords[0], 6* coords[1]]
+
+
+@consumer
+def accelerate_exp(p=2, accel=6, sensitivity=0):
+    v_out = 0,0
+
+    while True:
+        v_x, v_y = yield v_out
+        v_mag = (v_x ** 2 + v_y ** 2 ) ** 0.5
+        scale = v_mag ** (p - 1) * accel + sensitivity
+        v_out = v_x * scale, v_y * scale
+
+
+def killOutliers(coords, threshold=20):
+    if math.fabs(coords[0]) > threshold or math.fabs(coords[1]) > threshold:
+        print "*** Outlier ***"
+        return [0,0]
+    else:
+        return coords

@@ -47,8 +47,9 @@ def popAndAnalyze():
 
     # Display the resulting frame
     if displayWindow is True:
-        #cv2.circle(img, (int(x), int(y)) , 5, (255,0,0))
-        #img = cv2.drawKeypoints(img,kp,color=(0,255,0), flags=0)
+        if x is not None and y is not None:
+            cv2.circle(img, (int(x), int(y)) , 5, (255,0,0))
+        img = cv2.drawKeypoints(img,kp,color=(0,255,0), flags=0)
         cv2.imshow('frame',img)
 
     return [x, y]

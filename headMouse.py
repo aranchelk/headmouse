@@ -7,28 +7,31 @@ Headmouse!
 import cv2
 import serial
 import time
+import threading
 
 import hmCam
 import hmFilterData as filter
 
 CAMERA_ID = 0
 ARDUINO_PORT = 'COM7'
+hmCam.displayWindow = True
 
 if __name__ == "__main__":
 
-    arduino = serial.Serial(ARDUINO_PORT, 9600, timeout=1)
+    arduino = serial.Serial(ARDUINO_PORT, 115200, timeout=1)
 
     hmCam.bind(CAMERA_ID)
 
-    move_gen = filter.relative_movement()
-    move_gen.send(None)
+    velocity_gen = filter.relative_movement()
     sub_pix_gen = filter.sub_pix_trunc()
-    sub_pix_gen.send(None)
+    stateful_smooth_gen = filter.stateful_smoother()
+    input_smoother_gen = filter.ema_smoother(.85)
+    slow_smoother_gen = filter.slow_smoother(.6)
+    acceleration_gen = filter.accelerate_exp(p=2, accel=1.4, sensitivity=6.5)
 
     startTime = time.time()
     timeC = 0
     loops = 0
-
 
     while(True):
         loops += 1
@@ -45,29 +48,25 @@ if __name__ == "__main__":
 
         ### Filter Section ###
         #Take absolute position return relative position
-        coords = move_gen.send(coords)
-        #Subpixel info
-        coords = sub_pix_gen.send(coords)
+        v = velocity_gen.send(coords)
+        v = filter.killOutliers(v, 20)
 
-        #Convert this to an acceleration filter
-        x = coords[0] * 6
-        y = coords[1] * 6
 
-        x = -(x)
+        v = slow_smoother_gen.send((v, 6))
+        v = input_smoother_gen.send(v)
+        v = acceleration_gen.send(v)
+        #v = filter.accelerate(v)
 
+        v = sub_pix_gen.send(v)
+
+        #Mirror image on x-axis
+        x = -v[0]
+        y = v[1]
 
         #Duplicate in Arduino
-        x = str(int(x))
-        y = str(int(y))
-
-
         #print "coords are:" + x + ", " + y
 
-
-        if( x != 0 or y != 0):
-            arduino.write("32100\n" + x + "\n" + y + "\n")
-
-
+        arduino.write("32100\n%d\n%d\n" % (int(x),int(y)))
 
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break

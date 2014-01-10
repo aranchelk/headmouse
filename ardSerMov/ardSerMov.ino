@@ -4,7 +4,7 @@ int controlM = 0;
 
 void setup() {                
   delay(3000);
-  Serial1.begin(9600);
+  Serial1.begin(115200);
   Mouse.begin();
   for(int i = 0; i<100; i++){
     delay(5);
@@ -31,7 +31,8 @@ void loop() {
       int x = Serial1.parseInt();
       int y = Serial1.parseInt();
 
-      mouseMove(x, y);
+      mouseMove(x, y);      
+      
     }
     else{
       //Serial1.println("Unknown control message.");
