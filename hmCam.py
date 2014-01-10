@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 #coding=utf8
 '''
-Headmouse OpenCV wrapper module
+Headmouse OpenCV wrapper module.
 '''
 
 import cv2
