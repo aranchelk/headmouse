@@ -11,6 +11,7 @@ import threading
 
 import hmCam
 import hmFilterData as filter
+import arduinoSerial
 
 CAMERA_ID = 0
 ARDUINO_PORT = 'COM7'
@@ -18,14 +19,14 @@ hmCam.displayWindow = True
 
 if __name__ == "__main__":
 
-    arduino = serial.Serial(ARDUINO_PORT, 115200, timeout=1)
+    arduino = arduinoSerial.get_sync_arduino(ARDUINO_PORT, 115200, timeout=1)
 
     hmCam.bind(CAMERA_ID)
 
     velocity_gen = filter.relative_movement()
     sub_pix_gen = filter.sub_pix_trunc()
     stateful_smooth_gen = filter.stateful_smoother()
-    input_smoother_gen = filter.ema_smoother(.85)
+    input_smoother_gen = filter.em1 a_smoother(.85)
     slow_smoother_gen = filter.slow_smoother(.6)
     acceleration_gen = filter.accelerate_exp(p=2, accel=1.4, sensitivity=6.5)
 
@@ -66,7 +67,7 @@ if __name__ == "__main__":
         #Duplicate in Arduino
         #print "coords are:" + x + ", " + y
 
-        arduino.write("32100\n%d\n%d\n" % (int(x),int(y)))
+        arduino.move_mouse(x,y)
 
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break

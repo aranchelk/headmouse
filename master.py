@@ -8,17 +8,6 @@ def async_serial_writer(conn, fps=30, interp_slices=2):
     while conn.poll(2):
         try:
             message = conn.recv()
-
-
-
-
-
-
-            #Divide by 4, convert to int, on last go, subtract from original to prevent losing 1 in decimals
-            #serial write to arduino
-            #threading.Timer
-            #automatically calculate wait times input fps and shutter_blade_count
-
             #In final version, no send needed
             conn.send('child:' + str(message))
         except:
