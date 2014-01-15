@@ -19,14 +19,14 @@ hmCam.displayWindow = True
 
 if __name__ == "__main__":
 
-    arduino = arduinoSerial.get_sync_arduino(ARDUINO_PORT, 115200, timeout=1)
+    arduino = arduinoSerial.get_serial_link(ARDUINO_PORT, 115200, timeout=1, async=False, slices=8)
 
     hmCam.bind(CAMERA_ID)
 
     velocity_gen = filter.relative_movement()
     sub_pix_gen = filter.sub_pix_trunc()
     stateful_smooth_gen = filter.stateful_smoother()
-    input_smoother_gen = filter.em1 a_smoother(.85)
+    input_smoother_gen = filter.ema_smoother(.90)
     slow_smoother_gen = filter.slow_smoother(.6)
     acceleration_gen = filter.accelerate_exp(p=2, accel=1.4, sensitivity=6.5)
 

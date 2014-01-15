@@ -16,25 +16,29 @@ class SyncArduino:
         self.connection.write("32100\n%d\n%d\n" % (int(x),int(y)))
 
 
-def get_sync_arduino(port, baud, timeout):
-    return SyncArduino(port, baud, timeout)
+def get_serial_link(port, baud, timeout=1, fps=30, slices=8, async=True):
+    if async is False:
+        return SyncArduino(port, baud, timeout)
+    else:
+        return AsyncArduino(port, baud, timeout, fps, slices)
 
 
-def child_process_event_loop(conn, fps, slices):
+def child_process_event_loop(conn, fps, slices, port='COM7', baud=115200, timeout=1):
+    serial_handle = serial.Serial(port, baud, timeout=timeout)
     while conn.poll(3):
         try:
             x, y, port, baud = conn.recv()
-            move_mouse_interp(x,y, fps, slices, port, baud)
+            move_mouse_interp(x,y, fps, slices, serial_handle=serial_handle)
         except:
             continue
 
-def move_mouse(x, y, port, baud):
+def move_mouse(x, y, serial_handle):
     #print "move %s,%s\n\n" % (x, y)
-    h = open('./templog', 'a')
+    #h = open('./templog', 'a')
     serial_string = "32100\n%d\n%d\n" % (int(x),int(y))
-    h.write(serial_string)
+    serial_handle.write(serial_string)
 
-def move_mouse_interp(x, y, fps, interp_slices, port, baud):
+def move_mouse_interp(x, y, fps, interp_slices, serial_handle):
     #Split commands into the a series of commands and schedule them to run
     interp_data = []
 
@@ -53,7 +57,7 @@ def move_mouse_interp(x, y, fps, interp_slices, port, baud):
     i = 0
     inc = 1.0 / (fps * interp_slices)
     for x, y in interp_data:
-        threading.Timer(inc * i, move_mouse, [x,y, port, baud]).start()
+        threading.Timer(inc * i, move_mouse, [x,y, serial_handle]).start()
         i += 1
 
 
@@ -76,12 +80,9 @@ class AsyncArduino:
         self.__child_process.terminate()
         pass
 
-    def mouse_move(self, x, y):
+    def move_mouse(self, x, y):
         self.__child_process_connection.send((x, y, self.port, self.baud))
 
-
-def get_async_arduino(port, baud, timeout, fps=30, slices=4):
-    return AsyncArduino(port, baud, timeout, fps, slices)
 
 if __name__ == '__main__':
     ard = get_async_arduino(5, 9600, 1, slices=10, fps=10)
