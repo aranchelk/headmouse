@@ -4,8 +4,12 @@
 Write to stdin to serial
 '''
 
+import random
+import operator
 import serial
 import threading
+import itertools
+
 from multiprocessing import Process, Pipe
 
 class SyncArduino:
@@ -38,25 +42,36 @@ def move_mouse(x, y, serial_handle):
     serial_string = "32100\n%d\n%d\n" % (int(x),int(y))
     serial_handle.write(serial_string)
 
+def delta_slice(delta, slice_quantity):
+
+    delta_min_slice_val = int(delta / slice_quantity)
+    delta_remainder = delta - delta_min_slice_val * slice_quantity
+
+    delta_min_slice_list = [delta_min_slice_val] * slice_quantity
+
+    delta_remainder_slice_list = [1] * delta_remainder
+    delta_remainder_slice_list += [0]*(slice_quantity - len(delta_remainder_slice_list))
+
+    multi_add = lambda a,b: map(operator.add, a,b)
+
+    #http://stackoverflow.com/questions/17595590/correct-style-for-element-wise-operations-on-lists-without-numpy-python
+    out_list = multi_add(delta_min_slice_list, delta_remainder_slice_list)
+
+    random.shuffle(out_list)
+
+    return out_list
+
+
+def delta_slice_x_y(x, y, slice_quantity):
+    return zip(delta_slice(x, slice_quantity), delta_slice(y, slice_quantity))
+
+
 def move_mouse_interp(x, y, fps, interp_slices, serial_handle):
-    #Split commands into the a series of commands and schedule them to run
-    interp_data = []
+    #Split x,y delta into the a series of commands and schedule them to run
 
-    x_interp_trunc = int(x/interp_slices)
-    x_interp_remainder = x - x_interp_trunc * (interp_slices - 1)
-
-    y_interp_trunc = int(y/interp_slices)
-    y_interp_remainder = y - y_interp_trunc * (interp_slices - 1)
-
-    interp_data.append((x_interp_remainder, y_interp_remainder))
-
-    for i in range(interp_slices - 1):
-        interp_data.append((x_interp_trunc, y_interp_trunc))
-
-    #Schedule mouse moves
     i = 0
     inc = 1.0 / (fps * interp_slices)
-    for x, y in interp_data:
+    for x, y in delta_slice_x_y(x, y, interp_slices):
         threading.Timer(inc * i, move_mouse, [x,y, serial_handle]).start()
         i += 1
 
