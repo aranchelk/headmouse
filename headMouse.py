@@ -21,7 +21,7 @@ INPUT_VISUALIZER = True
 
 def main():
     # output driver setup
-    arduino = arduinoSerial.get_serial_link(ARDUINO_PORT, 115200, timeout=1, async=False, slices=8)
+    arduino = arduinoSerial.get_serial_link(ARDUINO_PORT, 115200, timeout=1, async=True, slices=3)
 
     # input driver setup
     hmCam.displayWindow = INPUT_VISUALIZER
