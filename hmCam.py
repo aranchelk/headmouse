@@ -12,7 +12,8 @@ cap = None
 orb = None
 displayWindow = False
 THRESHOLD = 230
-setup = {'width':640, 'height':480, 'fps':30, 'format':0}
+X_MAX, Y_MAX = 320, 240
+setup = {'width': X_MAX, 'height': Y_MAX, 'fps':30, 'format':0}
 
 def dumbAverage(numList):
     return (max(numList) + min(numList))/2
@@ -25,8 +26,8 @@ def bind(cameraId):
     cap.set(4, setup['height'])
     cap.set(5, setup['fps'])
     cap.set(8, setup['format'])
-    orb = cv2.ORB()
 
+    orb = cv2.ORB()
 
 def kp_to_xy(kp):
 
@@ -69,25 +70,68 @@ def kp_to_xy_new(kp):
 
     return x, y
 
+EYE_CASCADE_FILE = 'casacades/haarcascade_eye.xml'
+EYE_CASCADE_FILE = 'cascades/frontalEyes35x16.xml'
+EYE_CASCADE_FILE = 'casacades/oneEye.xml'
+EYE_CASCADE_FILE = 'casacades/reye.xml'
+EYE_CASCADE_FILE = 'cascades/haarcascade_lefteye_2splits.xml'
+
+eye_cascade = cv2.CascadeClassifier(EYE_CASCADE_FILE)
+face_cascade = cv2.CascadeClassifier('haarcascade_frontalface_default.xml')
+
 def popAndAnalyze():
-    x = None
-    y = None
+    x, y = None, None
     ret, img = cap.read()
-    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    ret,thresh3 = cv2.threshold(gray,THRESHOLD,255,cv2.THRESH_BINARY)
-    kp = orb.detect(thresh3,None)
+    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)[Y_MAX / 4. : 3 * Y_MAX / 4., X_MAX / 4. : 3 * X_MAX / 4.]
+    ret, thresh3 = cv2.threshold(gray,THRESHOLD,255,cv2.THRESH_BINARY)
+
+    #kp = orb.detect(thresh3,None)
+    kp = None
+
+    faces, eyes, objects = None, None, None
+
+    #faces = face_cascade.detectMultiScale(gray)
+    objects = eye_cascade.detectMultiScale(gray)
+    #objects = face_cascade.detectMultiScale(gray)
+
+#    objects = []
+#    for (x,y,w,h) in faces:
+#        roi_gray = gray[y:y+h, x:x+w]
+#        objects = [(ex + x, ey + y, ew, eh) for ex, ey, ew, eh in eye_cascade.detectMultiScale(roi_gray)]
+
+    # todo: if >2 objects, eliminate all but the two to existing objects
+    if len(objects) > 0:
+        #x, y = [sum(l)/len(l) for l in zip(*[(x + w / 2.,y + h / 2.) for x,y,w,h in objects])]
+        #print([(x + w/2., y+w/2.) for x, y, w, h in objects])
+        #print(zip(*[(x + w/2., y + h/2.) for x, y, w, h in objects]))
+        x, y = [(max(l) + min(l)) / 2. for l in zip(*[(x + w/2., y + h/2.) for x, y, w, h in objects])]
+        #print((x, y))
+    else:
+        x, y = None, None
+
 
     if kp:
         x, y = kp_to_xy(kp)
 
     # Display the resulting frame
     if displayWindow is True:
-        if x is not None and y is not None:
-            cv2.circle(img, (int(x), int(y)) , 5, (255,0,0))
-        img = cv2.drawKeypoints(img,kp,color=(0,255,0), flags=0)
-        cv2.imshow('frame',img)
+        display(faces=faces, objects=objects, kp=kp, coords=(x,y), img=gray)
 
     return [x, y]
+
+def display(faces=None, objects=None, kp=None, coords=(None, None), img=None):
+    x, y = coords
+    if img is not None:
+        if faces:
+            for xt, yt, w, h in faces:
+                cv2.circle(img, (int(xt + w / 2.), int(yt + h / 2.)), int((w + h) / 2.), (0,0,255))
+        for xt, yt, w, h in objects:
+            cv2.circle(img, (int(xt + w / 2.), int(yt + h / 2.)), int((w + h) / 2.), (0,255,0))
+        if kp:
+            img = cv2.drawKeypoints(img,kp,color=(0,255,0), flags=0)
+        if x is not None and y is not None:
+            cv2.circle(img, (int(x), int(y)) , 5, (255,0,0))
+        cv2.imshow('frame', img)
 
 def cleanup():
     cap.release()
