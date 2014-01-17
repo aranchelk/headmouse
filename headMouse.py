@@ -36,8 +36,8 @@ def main():
     sub_pix_gen = filter.sub_pix_trunc()
     stateful_smooth_gen = filter.stateful_smoother()
     input_smoother_gen = filter.ema_smoother(.90)
-    slow_smoother_gen = filter.slow_smoother(.6)
-    acceleration_gen = filter.accelerate_exp(p=2, accel=1.4, sensitivity=6.5)
+    #slow_smoother_gen = filter.slow_smoother(.6)
+    acceleration_gen = filter.accelerate_exp(p=2, accel=2.3, sensitivity=2)
 
     # main loop setup
     startTime = time.time()
@@ -62,7 +62,7 @@ def main():
         v = filter.killOutliers(v, 20)
 
 
-        v = slow_smoother_gen.send((v, 6))
+        #v = slow_smoother_gen.send((v, 6))
         v = input_smoother_gen.send(v)
         v = acceleration_gen.send(v)
         #v = filter.accelerate(v)
