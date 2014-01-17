@@ -4,13 +4,19 @@
 Write to stdin to serial
 '''
 
+import logging
 import random
 import operator
-import serial
 import threading
 import itertools
 
 from multiprocessing import Process, Pipe
+
+try:
+    import serial
+except ImportError:
+    logging.warn("Unable to load PySerial. No Arduino output available.")
+    raise
 
 class SyncArduino:
     def __init__(self, port='COM7', baud=115200, timeout=1):

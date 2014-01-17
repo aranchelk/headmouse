@@ -4,16 +4,25 @@
 Headmouse!
 '''
 
-import serial
+import logging
 import time
 import threading
 import sys
+
+try:
+    import pymouse
+except ImportError:
+    logging.warn("Unable to load PyMouse. Install PyUserinput for direct mouse control.")
 
 import cv2
 
 import hmCam
 import hmFilterData as filter
-import arduinoSerial
+
+try:
+    import arduinoSerial
+except ImportError:
+    pass
 
 CAMERA_ID = 0
 ARDUINO_PORT = 'COM7'
@@ -43,21 +52,33 @@ def arduino_output(port=ARDUINO_PORT, baud=ARDUINO_BAUD):
     '''Write mouse coordinates out to Arduino via serial'''
     arduino = arduinoSerial.get_serial_link(port, baud, timeout=1, async=False, slices=8)
     while True:
-        x,y = yield
-        #arduino.move_mouse(x,y)
-        print("{:d}, {:d}".format(x, y))
+        x, y = yield
+        arduino.move_mouse(x,y)
 
 @consumer
 def print_output():
     '''Write mouse coordinates out to stdout'''
     while True:
-        x,y = yield
+        x, y = yield
         print("{:d}, {:d}".format(x, y))
+
+@consumer
+def pymouse_output():
+    '''Write mouse coordinates out to pymouse'''
+    mouse = pymouse.PyMouse()
+    x_max, y_max = mouse.screen_size()
+    while True:
+        dx, dy = yield
+        x, y = mouse.position()
+        x = max(0, min(x_max, x + dx))
+        y = max(0, min(y_max, y + dy))
+        mouse.move(x, y)
+        #print("{:d}, {:d}".format(x, y))
 
 def main():
     '''Headmouse main loop'''
     # output driver setup
-    output_driver = print_output()
+    output_driver = pymouse_output()
 
     # input driver setup
     hmCam.displayWindow = INPUT_VISUALIZER
@@ -84,9 +105,9 @@ def main():
     for coords in input_source():
         loops += 1
         timeC += time.time() - startTime
-        if loops == 100:
+        if loops == 10:
             loops = 0
-            print "fps is around:", 100. / timeC
+            print "fps is around:", 10. / timeC
             timeC = 0
         #print "time took:", time.time() - startTime
         startTime = time.time()
