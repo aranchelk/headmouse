@@ -4,10 +4,12 @@
 Headmouse!
 '''
 
-import cv2
 import serial
 import time
 import threading
+import sys
+
+import cv2
 
 import hmCam
 import hmFilterData as filter
@@ -15,14 +17,21 @@ import arduinoSerial
 
 CAMERA_ID = 0
 ARDUINO_PORT = 'COM7'
-hmCam.displayWindow = True
+INPUT_VISUALIZER = True
 
-if __name__ == "__main__":
-
+def main():
+    # output driver setup
     arduino = arduinoSerial.get_serial_link(ARDUINO_PORT, 115200, timeout=1, async=False, slices=8)
 
+    # input driver setup
+    hmCam.displayWindow = INPUT_VISUALIZER
     hmCam.bind(CAMERA_ID)
+    
+    def input_source():
+    	while True:
+    		yield hmCam.popAndAnalyze()
 
+    # signal proc chain setup
     velocity_gen = filter.relative_movement()
     sub_pix_gen = filter.sub_pix_trunc()
     stateful_smooth_gen = filter.stateful_smoother()
@@ -30,11 +39,13 @@ if __name__ == "__main__":
     slow_smoother_gen = filter.slow_smoother(.6)
     acceleration_gen = filter.accelerate_exp(p=2, accel=1.4, sensitivity=6.5)
 
+    # main loop setup
     startTime = time.time()
     timeC = 0
     loops = 0
 
-    while(True):
+    # main loop
+    for coords in input_source():
         loops += 1
         timeC += time.time() - startTime
         if loops == 100:
@@ -44,8 +55,6 @@ if __name__ == "__main__":
         #print "time took:", time.time() - startTime
         startTime = time.time()
         # Capture frame-by-frame
-
-        coords = hmCam.popAndAnalyze()
 
         ### Filter Section ###
         #Take absolute position return relative position
@@ -72,5 +81,12 @@ if __name__ == "__main__":
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
 
+    # input driver cleanup
     # When everything done, release the capture
     hmCam.cleanup()
+
+    return 0
+
+if __name__ == "__main__":
+    sys.exit(main())
+
