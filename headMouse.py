@@ -17,19 +17,55 @@ import arduinoSerial
 
 CAMERA_ID = 0
 ARDUINO_PORT = 'COM7'
+ARDUINO_BAUD = 115200
 INPUT_VISUALIZER = True
 
+def consumer(func):
+    '''
+    Decorator taking care of initial next() call to "sending" generators
+
+    From PEP-342
+    http://www.python.org/dev/peps/pep-0342/
+    '''
+    def wrapper(*args,**kw):
+        gen = func(*args, **kw)
+        next(gen)
+        return gen
+    wrapper.__name__ = func.__name__
+    wrapper.__dict__ = func.__dict__
+    wrapper.__doc__  = func.__doc__
+    return wrapper
+
+## Output drivers
+
+@consumer
+def arduino_output(port=ARDUINO_PORT, baud=ARDUINO_BAUD):
+    '''Write mouse coordinates out to Arduino via serial'''
+    arduino = arduinoSerial.get_serial_link(port, baud, timeout=1, async=False, slices=8)
+    while True:
+        x,y = yield
+        #arduino.move_mouse(x,y)
+        print("{:d}, {:d}".format(x, y))
+
+@consumer
+def print_output():
+    '''Write mouse coordinates out to stdout'''
+    while True:
+        x,y = yield
+        print("{:d}, {:d}".format(x, y))
+
 def main():
+    '''Headmouse main loop'''
     # output driver setup
-    arduino = arduinoSerial.get_serial_link(ARDUINO_PORT, 115200, timeout=1, async=False, slices=8)
+    output_driver = print_output()
 
     # input driver setup
     hmCam.displayWindow = INPUT_VISUALIZER
     hmCam.bind(CAMERA_ID)
     
     def input_source():
-    	while True:
-    		yield hmCam.popAndAnalyze()
+        while True:
+            yield hmCam.popAndAnalyze()
 
     # signal proc chain setup
     velocity_gen = filter.relative_movement()
@@ -76,7 +112,7 @@ def main():
         #Duplicate in Arduino
         #print "coords are:" + x + ", " + y
 
-        arduino.move_mouse(x,y)
+        output_driver.send((x,y))
 
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
