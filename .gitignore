@@ -2,3 +2,5 @@
 .com.apple.timemachine.supported
 .idea
 *.pyc
+README.html
+*.swp
