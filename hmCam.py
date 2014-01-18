@@ -27,6 +27,48 @@ def bind(cameraId):
     cap.set(8, setup['format'])
     orb = cv2.ORB()
 
+
+def kp_to_xy(kp):
+
+    xList = []
+    yList = []
+    for k in kp:
+        xList.append(k.pt[0])
+        yList.append(k.pt[1])
+
+    x = dumbAverage(xList)
+    y = dumbAverage(yList)
+
+    return x, y
+
+def kp_to_xy_new(kp):
+
+    max_x = kp[0].pt[0]
+    min_x = kp[0].pt[0]
+    max_x_index = 0
+    min_x_index = 0
+
+    for i in range(len(kp)):
+        if kp[i].pt[0] > max_x:
+            max_x = kp[i].pt[0]
+            max_x_index = i
+        if kp[i].pt[0] < min_x:
+            min_x = kp[i].pt[0]
+            min_x_index = i
+
+    x = (max_x + min_x) / 2
+
+    x_thresh = .5
+    y_list = []
+
+    for k in kp:
+        if max_x - k.pt[0] < x_thresh or k.pt[0] - min_x < x_thresh:
+            y_list.append(k.pt[1])
+
+    y = dumbAverage(y_list)
+
+    return x, y
+
 def popAndAnalyze():
     x = None
     y = None
@@ -36,14 +78,7 @@ def popAndAnalyze():
     kp = orb.detect(thresh3,None)
 
     if kp:
-        xList = []
-        yList = []
-        for k in kp:
-            xList.append(k.pt[0])
-            yList.append(k.pt[1])
-
-        x = dumbAverage(xList)
-        y = dumbAverage(yList)
+        x, y = kp_to_xy(kp)
 
     # Display the resulting frame
     if displayWindow is True:
