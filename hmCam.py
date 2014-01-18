@@ -8,6 +8,8 @@ TODO: move face/eye/dot tracking into *functions*, not generators, and have a ge
       functions.
 '''
 
+import sys
+
 import cv2
 
 #Todo: Separate camera setup for algorithm setup.
@@ -22,23 +24,36 @@ FACE_CASCADE_FILE = 'cascades/haarcascade_frontalface_default.xml'
 
 cap = None
 displayWindow = False
+
 THRESHOLD = 230
-X_MAX, Y_MAX = 320, 240
-setup = {'width': X_MAX, 'height': Y_MAX, 'fps':30, 'format':0}
+DEFAULT_RESOLUTION = (640, 480)
+DEFAULT_FPS = 30
+DEFAULT_CAMERA = 0
+DEFAULT_FORMAT = 0
+DEFAULT_TRACKER = None
 
 def dumbAverage(numList):
     return (max(numList) + min(numList))/2
 
-def bind(cameraId):
-    #Sets up camera
+def bind(
+        camera_id=DEFAULT_CAMERA,
+        tracker_name=DEFAULT_TRACKER,
+        resolution=DEFAULT_RESOLUTION,
+        fps=DEFAULT_FPS,
+        format_=DEFAULT_FORMAT
+    ):
+    # Sets up camera
     global cap, tracker
-    cap = cv2.VideoCapture(cameraId)
-    cap.set(3, setup['width'])
-    cap.set(4, setup['height'])
-    cap.set(5, setup['fps'])
-    cap.set(8, setup['format'])
 
-    tracker = eye_tracker()
+    cap = cv2.VideoCapture(camera_id)
+    width, height = resolution
+
+    cap.set(3, width)
+    cap.set(4, height)
+    cap.set(5, fps)
+    cap.set(8, format_)
+
+    tracker = sys.modules[__name__].__dict__[tracker_name]()
 
 def popAndAnalyze():
     return next(tracker)
@@ -61,7 +76,13 @@ def eye_tracker(eye_cascade_file=EYE_CASCADE_FILE):
     eye_cascade = cv2.CascadeClassifier(eye_cascade_file)
     for frame in camera_frames():
         x, y = None, None
-        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)[Y_MAX / 4. : 3 * Y_MAX / 4., X_MAX / 4. : 3 * X_MAX / 4.]
+
+        # most of the information is in value, so work with grayscale
+        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+
+        # get the image size, then crop to only the area we feel is relevant
+        height, width = gray.shape
+        gray = gray[ (1./4) * height : (3./4) * height, (1./4) * width: (3./4) * width ]
 
         faces, eyes, objects = None, None, None
 
