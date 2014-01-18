@@ -23,6 +23,7 @@ import cv2
 
 import hmCam
 import hmFilterData as filter
+import util
 
 try:
     import arduinoSerial
@@ -150,14 +151,10 @@ def main():
         sensitivity=config['sensitivity']
         )
 
-    # main loop setup
-    startTime = time.time()
-    timeC = 0
-    loops = 0
-
     # input driver setup
     hmCam.visualize = config['input_visualize']
-    # todo: passthrough configs
+
+    fps_stats = util.Stats(util.Stats.inverse_normalized_interval_delta, "Average frame rate {:.0f} fps", 10)
     with hmCam.camera(
             tracker_name=config['input_tracker'],
             camera_id=config['input_camera_name'],
@@ -166,14 +163,8 @@ def main():
         ) as input_source:
         # main loop
         for coords in input_source:
-            loops += 1
-            timeC += time.time() - startTime
-            if loops == 10:
-                loops = 0
-                logging.info("Frame rate is around {} fps".format(10. / timeC))
-                timeC = 0
-            #print "time took:", time.time() - startTime
-            startTime = time.time()
+            fps_stats.push(time.time())
+
             # Capture frame-by-frame
 
             ### Filter Section ###

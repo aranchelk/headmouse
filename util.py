@@ -19,6 +19,21 @@ class Stats(collections.defaultdict):
     @classmethod
     def quartiles(cls, data):
         return [min(data), data[int(len(data)/4)], data[int(len(data) / 2)], data[int(3 * len(data) / 4)], max(data)]
+    @classmethod
+    def average_delta(cls, data):
+        return cls.average([a - b for a, b in zip(data[1:], data[:-1])])
+    @classmethod
+    def inverse_average_delta(cls, data):
+        return 1.0 / cls.average([a - b for a, b in zip(data[1:], data[:-1])])
+    @classmethod
+    def interval_delta(cls, data):
+        return data[-1] - data[0]
+    @classmethod
+    def normalized_interval_delta(cls, data):
+        return (data[-1] - data[0]) / len(data)
+    @classmethod
+    def inverse_normalized_interval_delta(cls, data):
+        return float(len(data)) / (data[-1] - data[0])
     def __init__(self, f, msg="{}", interval=10):
         self.interval = interval
         self.data = []
