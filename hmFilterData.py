@@ -1,3 +1,6 @@
+# coding=utf8
+
+import logging
 import math
 
 def consumer(func):
@@ -135,7 +138,7 @@ def accelerate_exp(p=2, accel=6, sensitivity=0):
 
 def killOutliers(coords, threshold=20):
     if math.fabs(coords[0]) > threshold or math.fabs(coords[1]) > threshold:
-        print "*** Outlier ***"
+        logging.info("*** Outlier ***")
         return [0,0]
     else:
         return coords

@@ -5,6 +5,8 @@ Headmouse!
 '''
 
 import logging
+logging.basicConfig(level=logging.DEBUG)
+
 import time
 import threading
 import sys
@@ -168,7 +170,7 @@ def main():
             timeC += time.time() - startTime
             if loops == 10:
                 loops = 0
-                logging.info("fps is around: {}".format(10. / timeC))
+                logging.info("Frame rate is around {} fps".format(10. / timeC))
                 timeC = 0
             #print "time took:", time.time() - startTime
             startTime = time.time()

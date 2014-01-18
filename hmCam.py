@@ -8,8 +8,10 @@ TODO: move face/eye/dot tracking into *functions*, not generators, and have a ge
       functions.
 '''
 
+import logging
 import sys
 import contextlib
+import itertools
 
 import cv2
 
@@ -71,8 +73,54 @@ def face_tracker(camera_frames, face_cascade_file=FACE_CASCADE_FILE):
     for frame in camera_frames():
         raise NotImplemented()
 
+def chase_crop(frame, objects):
+    '''
+    "Chase camera" cropper
+
+    Crop the image to be processed based upon previously detected objects. Since we're tracking facial 
+    movements in a video stream, we can presume that the new objects to be detected will be somewhat 
+    near any objects previously detects (i.e. there's a limit to how fast the user can move his head). 
+
+    We can reduce the image processing workload by searching only this nearby interesting area, defaulting
+    back to searching the entire frame if the search object is lost. 
+    '''
+    height, width = frame.shape
+    #return frame[ (1./4) * height : (3./4) * height, (1./4) * width: (3./4) * width ]
+    if objects is None or len(objects) == 0:
+        return ((0, 0), (0,0)), frame
+    else:
+        # determine bounding box around interesting points
+        interesting_points = list(itertools.chain(*[[(x, y), (x + w, y + h)] for x, y, w, h in objects]))
+        interesting_x, interesting_y = zip(*interesting_points)
+        box = (min(interesting_x), min(interesting_y)), (max(interesting_x), max(interesting_y))
+        (b_x0, b_y0), (b_x1, b_y1) = box
+        box_width, box_height = (b_x1 - b_x0), (b_y1 - b_y0)
+        center_x, center_y = ((b_x0 + b_x1) / 2.), ((b_y0 + b_y1) / 2.)
+
+        # calculate a window some % larger than that bounding box
+        window_width, window_height = (box_width * 2.0), (box_height * 2.0)
+        window = (center_x - window_width / 2., center_y - window_height / 2.),\
+                 (center_x + window_width / 2., center_y + window_height / 2.)
+
+        # ensure the window fits in the frame
+        window = (int(max(0,     window[0][0])), int(max(0,      window[0][1]))),\
+                 (int(min(width, window[1][0])), int(min(height, window[1][1]))) 
+        (w_x0, w_y0), (w_x1, w_y1) = window
+
+        '''
+        logging.debug("Cropping to {}x{}, actual {}x{}, bounding box ({},{}), ({},{})".format(
+            window_width, window_height,
+            w_x1 - w_x0, w_y1 - w_y0,
+            w_x0, w_y0, w_x1, w_y1
+            ))
+        '''
+
+        # crop the frame to the "interesting + x%" window
+        return ((w_x0, w_y0), (w_x1, w_y1)), frame[w_y0:w_y1, w_x0:w_x1]
+
 def eye_tracker(camera_frames, eye_cascade_file=EYE_CASCADE_FILE):
     eye_cascade = cv2.CascadeClassifier(eye_cascade_file)
+    objects = None
     
     for frame in camera_frames():
         x, y = None, None
@@ -80,19 +128,32 @@ def eye_tracker(camera_frames, eye_cascade_file=EYE_CASCADE_FILE):
         # most of the information is in value, so work with grayscale
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
 
+        # TODO: if we lose the tracked object, zoom back out and try again
+        # TODO: count the number of objects we want, try to limit tracking to only relevant objects
+        # TODO: persist tracking info so we don't jump if we lose, e.g. one eye out of two (know which is left and right)
+        # TODO: drop frames when we lose all tracking; maybe one per second after first one second of missing data?
+        # TODO: pick a target area target kilopixel value and resize image patch to suit
+        # TODO: classes for Box() and Window()
+        # TODO: Track only one object per frame. This lowers search area pixel count for the next frame,
+        #       encourages the seemingly more stable single eye tracking, and helps us eliminate crazy
+        #       outlier objects (e.g. chins, second faces, etc.)
+        # TODO: Favor eyes detected in approximately horizontal pairs. Prefer the most horizontal largest pair. 
+        # TODO: Normalize search area size to about 10–15 kpx per single tracked eye (different if we found lots of objects)
         # get the image size, then crop to only the area we feel is relevant
-        height, width = gray.shape
-        gray = gray[ (1./4) * height : (3./4) * height, (1./4) * width: (3./4) * width ]
+        (upper_left, lower_right), cropped_gray = chase_crop(gray, objects)
 
         faces, eyes, objects = None, None, None
 
-        #faces = face_cascade.detectMultiScale(gray)
-        objects = eye_cascade.detectMultiScale(gray)
-        #objects = face_cascade.detectMultiScale(gray)
+        #faces = face_cascade.detectMultiScale(cropped_gray)
+        objects_raw = eye_cascade.detectMultiScale(cropped_gray)
+        #objects = face_cascade.detectMultiScale(cropped_gray)
+
+        # normalize object coords to full frame
+        objects = [ (x + upper_left[0], y + upper_left[1], w, h) for x, y, w, h in objects_raw ]
 
     #    objects = []
     #    for (x,y,w,h) in faces:
-    #        roi_gray = gray[y:y+h, x:x+w]
+    #        roi_gray = cropped_gray[y:y+h, x:x+w]
     #        objects = [(ex + x, ey + y, ew, eh) for ex, ey, ew, eh in eye_cascade.detectMultiScale(roi_gray)]
 
         # todo: if >2 objects, eliminate all but the two to existing objects
@@ -107,7 +168,7 @@ def eye_tracker(camera_frames, eye_cascade_file=EYE_CASCADE_FILE):
 
         # Display the resulting frame
         if visualize is True:
-            display(faces=faces, objects=objects, coords=(x,y), img=gray)
+            display(faces=faces, objects=objects, coords=(x,y), boxes=[(upper_left, lower_right)], img=gray)
 
         yield x, y
 
@@ -169,9 +230,12 @@ def dot_tracker(camera_frames):
 
             yield x, y
 
-def display(faces=None, objects=None, kp=None, coords=(None, None), img=None):
+def display(faces=None, objects=None, kp=None, coords=(None, None), boxes=None, img=None):
     x, y = coords
     if img is not None:
+        if boxes is not None:
+            for (x0,y0), (x1, y1) in boxes:
+                cv2.rectangle(img, (x0,y0), (x1,y1), (0, 0, 255))
         if faces:
             for xt, yt, w, h in faces:
                 cv2.circle(img, (int(xt + w / 2.), int(yt + h / 2.)), int((w + h) / 2.), (0,0,255))
