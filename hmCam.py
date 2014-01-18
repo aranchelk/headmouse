@@ -9,6 +9,7 @@ TODO: move face/eye/dot tracking into *functions*, not generators, and have a ge
 '''
 
 import sys
+import contextlib
 
 import cv2
 
@@ -22,7 +23,6 @@ EYE_CASCADE_FILE = 'cascades/haarcascade_lefteye_2splits.xml'
 
 FACE_CASCADE_FILE = 'cascades/haarcascade_frontalface_default.xml'
 
-cap = None
 displayWindow = False
 
 THRESHOLD = 230
@@ -35,7 +35,8 @@ DEFAULT_TRACKER = None
 def dumbAverage(numList):
     return (max(numList) + min(numList))/2
 
-def bind(
+@contextlib.contextmanager
+def camera(
         camera_id=DEFAULT_CAMERA,
         tracker_name=DEFAULT_TRACKER,
         resolution=DEFAULT_RESOLUTION,
@@ -43,7 +44,6 @@ def bind(
         format_=DEFAULT_FORMAT
     ):
     # Sets up camera
-    global cap, tracker
 
     cap = cv2.VideoCapture(camera_id)
     width, height = resolution
@@ -53,26 +53,25 @@ def bind(
     cap.set(5, fps)
     cap.set(8, format_)
 
-    tracker = sys.modules[__name__].__dict__[tracker_name]()
+    def camera_frames():
+        while True:
+            return_code, image = cap.read()
+            yield image
 
-def popAndAnalyze():
-    return next(tracker)
+    # TODO: restrict loadable generaton functions for security
+    tracker = sys.modules[__name__].__dict__[tracker_name](camera_frames)
 
-def cleanup():
+    yield tracker
+
     cap.release()
     cv2.destroyAllWindows()
 
-def camera_frames():
-    while True:
-        return_code, image = cap.read()
-        yield image
-
-def face_tracker(face_cascade_file=FACE_CASCADE_FILE):
+def face_tracker(camera_frames, face_cascade_file=FACE_CASCADE_FILE):
     face_cascade = cv2.CascadeClassifier(face_cascade_file)
     for frame in camera_frames():
         raise NotImplemented()
 
-def eye_tracker(eye_cascade_file=EYE_CASCADE_FILE):
+def eye_tracker(camera_frames, eye_cascade_file=EYE_CASCADE_FILE):
     eye_cascade = cv2.CascadeClassifier(eye_cascade_file)
     for frame in camera_frames():
         x, y = None, None
@@ -111,7 +110,7 @@ def eye_tracker(eye_cascade_file=EYE_CASCADE_FILE):
 
         yield x, y
 
-def dot_tracker():
+def dot_tracker(camera_frames):
     def kp_to_xy(kp):
 
         xList = []

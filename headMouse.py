@@ -113,15 +113,8 @@ def main():
     config = get_config()
 
     # output driver setup
+    # TODO: restrict loadable generaton functions for security
     output_driver = sys.modules[__name__].__dict__[config['output']](config=config)
-
-    # input driver setup
-    def input_source():
-        hmCam.displayWindow = config['input_visualize']
-        # todo: passthrough configs
-        hmCam.bind(tracker_name=config['input_tracker'])
-        while True:
-            yield hmCam.popAndAnalyze()
 
     # signal proc chain setup
     velocity_gen = filter.relative_movement()
@@ -140,46 +133,47 @@ def main():
     timeC = 0
     loops = 0
 
-    # main loop
-    for coords in input_source():
-        loops += 1
-        timeC += time.time() - startTime
-        if loops == 10:
-            loops = 0
-            logging.info("fps is around: {}".format(10. / timeC))
-            timeC = 0
-        #print "time took:", time.time() - startTime
-        startTime = time.time()
-        # Capture frame-by-frame
 
-        ### Filter Section ###
-        #Take absolute position return relative position
-        v = velocity_gen.send(coords)
-        v = filter.killOutliers(v, OUTLIER_VELOCITY_THRESHOLD)
+    # input driver setup
+    hmCam.displayWindow = config['input_visualize']
+    # todo: passthrough configs
+    with hmCam.camera(tracker_name=config['input_tracker']) as input_source:
+        # main loop
+        for coords in input_source:
+            loops += 1
+            timeC += time.time() - startTime
+            if loops == 10:
+                loops = 0
+                logging.info("fps is around: {}".format(10. / timeC))
+                timeC = 0
+            #print "time took:", time.time() - startTime
+            startTime = time.time()
+            # Capture frame-by-frame
+
+            ### Filter Section ###
+            #Take absolute position return relative position
+            v = velocity_gen.send(coords)
+            v = filter.killOutliers(v, OUTLIER_VELOCITY_THRESHOLD)
 
 
-        #v = slow_smoother_gen.send((v, 6))
-        v = input_smoother_gen.send(v)
-        v = acceleration_gen.send(v)
-        #v = filter.accelerate(v)
+            #v = slow_smoother_gen.send((v, 6))
+            v = input_smoother_gen.send(v)
+            v = acceleration_gen.send(v)
+            #v = filter.accelerate(v)
 
-        v = sub_pix_gen.send(v)
+            v = sub_pix_gen.send(v)
 
-        #Mirror image on x-axis
-        x = -v[0]
-        y = v[1]
+            #Mirror image on x-axis
+            x = -v[0]
+            y = v[1]
 
-        #Duplicate in Arduino
-        #print "coords are:" + x + ", " + y
+            #Duplicate in Arduino
+            #print "coords are:" + x + ", " + y
 
-        output_driver.send((x,y))
+            output_driver.send((x,y))
 
-        if cv2.waitKey(1) & 0xFF == ord('q'):
-            break
-
-    # input driver cleanup
-    # When everything done, release the capture
-    hmCam.cleanup()
+            if cv2.waitKey(1) & 0xFF == ord('q'):
+                break
 
     return 0
 
