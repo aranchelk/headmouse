@@ -23,7 +23,7 @@ EYE_CASCADE_FILE = 'cascades/haarcascade_lefteye_2splits.xml'
 
 FACE_CASCADE_FILE = 'cascades/haarcascade_frontalface_default.xml'
 
-displayWindow = False
+visualize = False
 
 THRESHOLD = 230
 DEFAULT_RESOLUTION = (640, 480)
@@ -106,7 +106,7 @@ def eye_tracker(camera_frames, eye_cascade_file=EYE_CASCADE_FILE):
             x, y = None, None
 
         # Display the resulting frame
-        if displayWindow is True:
+        if visualize is True:
             display(faces=faces, objects=objects, coords=(x,y), img=gray)
 
         yield x, y
@@ -164,7 +164,7 @@ def dot_tracker(camera_frames):
             x, y = kp_to_xy(kp)
 
             # Display the resulting frame
-            if displayWindow is True:
+            if visualize is True:
                 display(kp=kp, coords=(x,y), img=gray)
 
             yield x, y

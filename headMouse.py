@@ -10,6 +10,7 @@ import threading
 import sys
 import os
 import ConfigParser
+import re
 
 try:
     import pymouse
@@ -26,7 +27,8 @@ try:
 except ImportError:
     pass
 
-CONFIG_FILE = os.path.expanduser('~/.headmouse')
+GLOBAL_CONFIG_FILE = "/etc/headmouse.conf"
+USER_CONFIG_FILE = os.path.expanduser("~/.headmouse")
 
 ACCELERATION_EXPONENT = 2
 OUTLIER_VELOCITY_THRESHOLD = 20
@@ -75,10 +77,10 @@ def pymouse_output(config=None):
         x = max(0, min(x_max, x + dx))
         y = max(0, min(y_max, y + dy))
         if x < 0 or x_max < x or y < 0 or y_max < y:
-            print("{}, {}".format(x, y))
+            logging.debug("{}, {}".format(x, y))
         mouse.move(x, y)
 
-def get_config(config_file=CONFIG_FILE):
+def get_config(custom_config_file=None):
     config = {
         'output': 'arduino_output',
         'arduino_baud': 115200,
@@ -86,31 +88,44 @@ def get_config(config_file=CONFIG_FILE):
 
         'input': 'camera',
         'input_tracker': 'dot_tracker',
-        'input_camera': 0,
-        'input_resolution': (640, 480),
-        'input_fps': 30,
         'input_visualize': True,
+
+        'input_camera_name': 0,
+        'input_camera_resolution': (640, 480),
+        'input_camera_fps': 30,
 
         'acceleration': 2.3,
         'sensitivity': 2.0,
         'smoothing': 0.90,
     }
-    if os.path.exists(config_file):
-        config_parser = ConfigParser.SafeConfigParser()
-        config_parser.read([config_file])
-        from_file = dict(config_parser.items('headmouse'))
-        config.update(from_file)
+
+    # parse config files and override hardcoded defaults
+    for config_file in\
+        (custom_config_file,) if custom_config_file is not None else\
+        (GLOBAL_CONFIG_FILE, USER_CONFIG_FILE):
+        if os.path.exists(config_file):
+            config_parser = ConfigParser.SafeConfigParser()
+            config_parser.read([config_file])
+            from_file = dict(config_parser.items('headmouse'))
+            config.update(from_file)
+
+    # TODO: argparse overrides
 
     # type hacks... 
     # TODO: something better
-    if isinstance(config['input_resolution'], basestring):
-        config['input_resolution'] = [int(x) for x in config['input_resolution'].split(',')]
-    for field in ('input_camera', 'input_fps', 'arduino_baud'):
+
+    # split resolution like "640x480" or "640, 480" into pair of ints
+    if isinstance(config['input_camera_resolution'], basestring):
+        config['input_camera_resolution'] = [int(x) for x in re.split(r'x|, *', config['input_camera_resolution'])]
+
+    # int config fields
+    for field in ('input_camera_name', 'input_camera_fps', 'arduino_baud'):
         config[field] = int(config[field])
+
+    # float config fields
     for field in ('acceleration', 'sensitivity', 'smoothing'):
         config[field] = float(config[field])
 
-    # TODO: argparse overrides
     return config
 
 def main():
@@ -138,11 +153,15 @@ def main():
     timeC = 0
     loops = 0
 
-
     # input driver setup
-    hmCam.displayWindow = config['input_visualize']
+    hmCam.visualize = config['input_visualize']
     # todo: passthrough configs
-    with hmCam.camera(tracker_name=config['input_tracker']) as input_source:
+    with hmCam.camera(
+            tracker_name=config['input_tracker'],
+            camera_id=config['input_camera_name'],
+            resolution=config['input_camera_resolution'],
+            fps=config['input_camera_fps']
+        ) as input_source:
         # main loop
         for coords in input_source:
             loops += 1
