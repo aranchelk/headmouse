@@ -73,6 +73,7 @@ def face_tracker(camera_frames, face_cascade_file=FACE_CASCADE_FILE):
 
 def eye_tracker(camera_frames, eye_cascade_file=EYE_CASCADE_FILE):
     eye_cascade = cv2.CascadeClassifier(eye_cascade_file)
+    
     for frame in camera_frames():
         x, y = None, None
 
@@ -180,5 +181,5 @@ def display(faces=None, objects=None, kp=None, coords=(None, None), img=None):
             img = cv2.drawKeypoints(img,kp,color=(0,255,0), flags=0)
         if x is not None and y is not None:
             cv2.circle(img, (int(x), int(y)) , 5, (255,0,0))
-        cv2.imshow('frame', img)
+        cv2.imshow('frame', cv2.flip(img, flipCode=1))
 
