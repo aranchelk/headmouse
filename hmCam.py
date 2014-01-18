@@ -168,7 +168,11 @@ def eye_tracker(camera_frames, eye_cascade_file=EYE_CASCADE_FILE):
 
         # Display the resulting frame
         if visualize is True:
-            display(faces=faces, objects=objects, coords=(x,y), boxes=[(upper_left, lower_right)], img=gray)
+            display(faces=faces, 
+                    objects=objects, 
+                    coords=(x,y), 
+                    boxes=[(upper_left, lower_right)],
+                    img=frame)
 
         yield x, y
 
@@ -238,12 +242,12 @@ def display(faces=None, objects=None, kp=None, coords=(None, None), boxes=None, 
                 cv2.rectangle(img, (x0,y0), (x1,y1), (0, 0, 255))
         if faces:
             for xt, yt, w, h in faces:
-                cv2.circle(img, (int(xt + w / 2.), int(yt + h / 2.)), int((w + h) / 2.), (0,0,255))
+                cv2.rectangle(img, (xt, yt), (xt + h, yt + h), (0, 255, 0))
         for xt, yt, w, h in objects:
-            cv2.circle(img, (int(xt + w / 2.), int(yt + h / 2.)), int((w + h) / 2.), (0,255,0))
+            cv2.rectangle(img, (xt, yt), (xt + h, yt + h), (0, 255, 0))
         if kp:
             img = cv2.drawKeypoints(img,kp,color=(0,255,0), flags=0)
         if x is not None and y is not None:
-            cv2.circle(img, (int(x), int(y)) , 5, (255,0,0))
+            cv2.circle(img, (int(x), int(y)), 4, (255, 255, 255), 3)
         cv2.imshow('frame', cv2.flip(img, flipCode=1))
 
