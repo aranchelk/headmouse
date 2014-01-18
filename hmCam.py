@@ -15,6 +15,8 @@ import itertools
 
 import cv2
 
+import util
+
 #Todo: Separate camera setup for algorithm setup.
 
 EYE_CASCADE_FILE = 'casacades/haarcascade_eye.xml'
@@ -73,6 +75,12 @@ def face_tracker(camera_frames, face_cascade_file=FACE_CASCADE_FILE):
     for frame in camera_frames():
         raise NotImplemented()
 
+def middle_quarter_crop(frame, objects=None):
+    # static crop
+    height, width = frame.shape
+    (w_x0, w_y0), (w_x1, w_y1) = ((1./4) * width, (1./4) * height), ((3./4) * width, (3./4) * height)
+    return ((w_x0, w_y0), (w_x1, w_y1)), frame[ w_y0:w_y1, w_x0:w_x1 ]
+    
 def chase_crop(frame, objects):
     '''
     "Chase camera" cropper
@@ -85,7 +93,7 @@ def chase_crop(frame, objects):
     back to searching the entire frame if the search object is lost. 
     '''
     height, width = frame.shape
-    #return frame[ (1./4) * height : (3./4) * height, (1./4) * width: (3./4) * width ]
+
     if objects is None or len(objects) == 0:
         return ((0, 0), (0,0)), frame
     else:
@@ -122,6 +130,8 @@ def eye_tracker(camera_frames, eye_cascade_file=EYE_CASCADE_FILE):
     eye_cascade = cv2.CascadeClassifier(eye_cascade_file)
     objects = None
     
+    #stats = util.Stats(Stats.average, "Average pixels processed: ~{} kpx")
+    stats = util.Stats(Stats.quartiles, "Kilopixels processed: [{:.1f}, {:.1f}, {:.1f}, {:.1f}, {:.1f}]", interval = 30)
     for frame in camera_frames():
         x, y = None, None
 
@@ -141,6 +151,8 @@ def eye_tracker(camera_frames, eye_cascade_file=EYE_CASCADE_FILE):
         # TODO: Normalize search area size to about 10–15 kpx per single tracked eye (different if we found lots of objects)
         # get the image size, then crop to only the area we feel is relevant
         (upper_left, lower_right), cropped_gray = chase_crop(gray, objects)
+
+        stats.push(cropped_gray.size / 1000.)
 
         faces, eyes, objects = None, None, None
 
