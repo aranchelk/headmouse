@@ -175,30 +175,24 @@ def main():
             # Capture frame-by-frame
 
             ### Filter Section ###
-            #Take absolute position return relative position
+            # take absolute position return relative position
             v = velocity_gen.send(coords)
             v = filter.killOutliers(v, OUTLIER_VELOCITY_THRESHOLD)
-
 
             #v = slow_smoother_gen.send((v, 6))
             v = input_smoother_gen.send(v)
             v = acceleration_gen.send(v)
             #v = filter.accelerate(v)
 
-            v = sub_pix_gen.send(v)
+            dx, dy = sub_pix_gen.send(v)
 
-            #Mirror image on x-axis
-            x = -v[0]
-            y = v[1]
+            # mirror motion on x-axis
+            dx *= -1
 
-            #Duplicate in Arduino
-            #print "coords are:" + x + ", " + y
-
-            output_driver.send((x,y))
+            output_driver.send((dx,dy))
 
             if cv2.waitKey(1) & 0xFF == ord('q'):
                 break
-
     return 0
 
 if __name__ == "__main__":
