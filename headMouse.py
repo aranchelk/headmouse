@@ -68,10 +68,15 @@ def print_output(config=None):
 def pymouse_output(config=None):
     '''Write mouse coordinates out to pymouse'''
     mouse = pymouse.PyMouse()
+    x_max, y_max = mouse.screen_size()
     while True:
         dx, dy = yield
         x, y = mouse.position()
-        mouse.move(x + dx, y + dy)
+        x = max(0, min(x_max, x + dx))
+        y = max(0, min(y_max, y + dy))
+        if x < 0 or x_max < x or y < 0 or y_max < y:
+            print("{}, {}".format(x, y))
+        mouse.move(x, y)
 
 def get_config(config_file=CONFIG_FILE):
     config = {
