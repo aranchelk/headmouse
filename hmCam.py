@@ -130,8 +130,8 @@ def eye_tracker(camera_frames, eye_cascade_file=EYE_CASCADE_FILE):
     eye_cascade = cv2.CascadeClassifier(eye_cascade_file)
     objects = None
     
-    #stats = util.Stats(Stats.average, "Average pixels processed: ~{} kpx")
-    stats = util.Stats(Stats.quartiles, "Kilopixels processed: [{:.1f}, {:.1f}, {:.1f}, {:.1f}, {:.1f}]", interval = 30)
+    kpx_stats = util.Stats(util.Stats.quartiles, "Kilopixels processed: [{:.1f}, {:.1f}, {:.1f}, {:.1f}, {:.1f}]", interval = 30)
+    scale_stats = util.Stats(util.Stats.quartiles, "Scale factors: [{:.2f}, {:.2f}, {:.2f}, {:.2f}, {:.2f}]", interval = 30)
     for frame in camera_frames():
         x, y = None, None
 
@@ -152,7 +152,18 @@ def eye_tracker(camera_frames, eye_cascade_file=EYE_CASCADE_FILE):
         # get the image size, then crop to only the area we feel is relevant
         (upper_left, lower_right), cropped_gray = chase_crop(gray, objects)
 
-        stats.push(cropped_gray.size / 1000.)
+        scale_factor = 1
+        if objects is not None and (len(objects) == 1 or len(objects) == 2):
+            # if the search area is huge, resize it to 100 px high
+            ch, cw = cropped_gray.shape
+            scale_factor = 100. / ch
+            if scale_factor < 0.75:
+                cropped_gray = cv2.resize(cropped_gray, (0,0), fx=scale_factor, fy=scale_factor)
+            else:
+                scale_factor = 1
+
+        kpx_stats.push(cropped_gray.size / 1000.)
+        scale_stats.push(scale_factor)
 
         faces, eyes, objects = None, None, None
 
@@ -161,7 +172,14 @@ def eye_tracker(camera_frames, eye_cascade_file=EYE_CASCADE_FILE):
         #objects = face_cascade.detectMultiScale(cropped_gray)
 
         # normalize object coords to full frame
-        objects = [ (x + upper_left[0], y + upper_left[1], w, h) for x, y, w, h in objects_raw ]
+        objects = [(
+                int(x / scale_factor) + upper_left[0], 
+                int(y / scale_factor) + upper_left[1], 
+                int(w / scale_factor), 
+                int(h / scale_factor))\
+            for x, y, w, h in objects_raw]
+
+        objects = objects[:1]
 
     #    objects = []
     #    for (x,y,w,h) in faces:
