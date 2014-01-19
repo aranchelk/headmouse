@@ -6,6 +6,7 @@ required_modules = [
 	"numpy",
 	"pyserial",
 	"PyUserinput",
+	"psutil",
 	]
 
 readme = ""

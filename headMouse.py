@@ -92,6 +92,8 @@ def get_config(custom_config_file=None):
         'input': 'camera',
         'input_tracker': 'dot_tracker',
         'input_visualize': True,
+        'input_realtime_search_timeout': 2.0,
+        'input_slow_search_delay': 2.0,
 
         'input_camera_name': 0,
         'input_camera_resolution': (640, 480),
@@ -126,7 +128,13 @@ def get_config(custom_config_file=None):
         config[field] = int(config[field])
 
     # float config fields
-    for field in ('acceleration', 'sensitivity', 'smoothing'):
+    for field in (
+            'acceleration', 
+            'sensitivity', 
+            'smoothing', 
+            'input_realtime_search_timeout', 
+            'input_slow_search_delay'
+        ):
         config[field] = float(config[field])
 
     return config
@@ -159,7 +167,9 @@ def main():
             tracker_name=config['input_tracker'],
             camera_id=config['input_camera_name'],
             resolution=config['input_camera_resolution'],
-            fps=config['input_camera_fps']
+            fps=config['input_camera_fps'],
+            realtime_search_timeout=config['input_realtime_search_timeout'],
+            slow_search_delay=config['input_slow_search_delay']
         ) as input_source:
         # main loop
         for coords in input_source:

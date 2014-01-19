@@ -12,8 +12,11 @@ import logging
 import sys
 import contextlib
 import itertools
+import time
+import math
 
 import cv2
+import psutil
 
 import util
 
@@ -36,6 +39,13 @@ DEFAULT_CAMERA = 0
 DEFAULT_FORMAT = 0
 DEFAULT_TRACKER = None
 
+# TODO: change slow search behavior to target FPS in various search modes
+DEFAULT_REALTIME_SEARCH_TIMEOUT = 2.0
+DEFAULT_SLOW_SEARCH_DELAY = 2.0
+
+TARGET_SEARCH_KILOPIXELS = 10
+MAX_SEARCH_KILOPIXELS = 100
+
 def dumbAverage(numList):
     return (max(numList) + min(numList))/2
 
@@ -45,7 +55,9 @@ def camera(
         tracker_name=DEFAULT_TRACKER,
         resolution=DEFAULT_RESOLUTION,
         fps=DEFAULT_FPS,
-        format_=DEFAULT_FORMAT
+        format_=DEFAULT_FORMAT,
+        realtime_search_timeout=DEFAULT_REALTIME_SEARCH_TIMEOUT,
+        slow_search_delay=DEFAULT_SLOW_SEARCH_DELAY
     ):
     # Sets up camera
 
@@ -63,7 +75,11 @@ def camera(
             yield image
 
     # TODO: restrict loadable generaton functions for security
-    tracker = sys.modules[__name__].__dict__[tracker_name](camera_frames)
+    tracker = sys.modules[__name__].__dict__[tracker_name](
+            camera_frames,
+            realtime_search_timeout=realtime_search_timeout,
+            slow_search_delay=slow_search_delay
+        )
 
     yield tracker
 
@@ -126,85 +142,129 @@ def chase_crop(frame, objects):
         # crop the frame to the "interesting + x%" window
         return ((w_x0, w_y0), (w_x1, w_y1)), frame[w_y0:w_y1, w_x0:w_x1]
 
-def eye_tracker(camera_frames, eye_cascade_file=EYE_CASCADE_FILE):
+def eye_tracker(
+        camera_frames, 
+        realtime_search_timeout=DEFAULT_REALTIME_SEARCH_TIMEOUT,
+        slow_search_delay=DEFAULT_SLOW_SEARCH_DELAY,
+        eye_cascade_file=EYE_CASCADE_FILE
+    ):
     eye_cascade = cv2.CascadeClassifier(eye_cascade_file)
     objects = None
+
+    target_search_height = math.sqrt(TARGET_SEARCH_KILOPIXELS * 1000.0)
+    max_search_pixels = MAX_SEARCH_KILOPIXELS * 1000.0
     
     kpx_stats = util.Stats(util.Stats.quartiles, "Kilopixels processed: [{:.1f}, {:.1f}, {:.1f}, {:.1f}, {:.1f}]", interval = 30)
     scale_stats = util.Stats(util.Stats.quartiles, "Scale factors: [{:.2f}, {:.2f}, {:.2f}, {:.2f}, {:.2f}]", interval = 30)
+    cpu_stats = util.Stats(util.Stats.average, "Average CPU usage {}%", interval = 30)
+
+    # track how long it's been since we've found an object
+    missing_since = None
+    delay_until = None
     for frame in camera_frames():
         x, y = None, None
 
-        # most of the information is in value, so work with grayscale
-        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        cpu_stats.push(psutil.cpu_percent(interval=0))
+        # skip image processing if we have a delay set
+        if delay_until is None or time.time() >= delay_until:
+            # most of the information is in value, so work with grayscale
+            gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
 
-        # TODO: if we lose the tracked object, zoom back out and try again
-        # TODO: count the number of objects we want, try to limit tracking to only relevant objects
-        # TODO: persist tracking info so we don't jump if we lose, e.g. one eye out of two (know which is left and right)
-        # TODO: drop frames when we lose all tracking; maybe one per second after first one second of missing data?
-        # TODO: pick a target area target kilopixel value and resize image patch to suit
-        # TODO: classes for Box() and Window()
-        # TODO: Track only one object per frame. This lowers search area pixel count for the next frame,
-        #       encourages the seemingly more stable single eye tracking, and helps us eliminate crazy
-        #       outlier objects (e.g. chins, second faces, etc.)
-        # TODO: Favor eyes detected in approximately horizontal pairs. Prefer the most horizontal largest pair. 
-        # TODO: Normalize search area size to about 10–15 kpx per single tracked eye (different if we found lots of objects)
-        # get the image size, then crop to only the area we feel is relevant
-        (upper_left, lower_right), cropped_gray = chase_crop(gray, objects)
+            # TODO: if we lose the tracked object, zoom back out and try again
+            # TODO: count the number of objects we want, try to limit tracking to only relevant objects
+            # TODO: persist tracking info so we don't jump if we lose, e.g. one eye out of two (know which is left and right)
+            # TODO: drop frames when we lose all tracking; maybe one per second after first one second of missing data?
+            # TODO: pick a target area target kilopixel value and resize image patch to suit
+            # TODO: classes for Box() and Window()
+            # TODO: Track only one object per frame. This lowers search area pixel count for the next frame,
+            #       encourages the seemingly more stable single eye tracking, and helps us eliminate crazy
+            #       outlier objects (e.g. chins, second faces, etc.)
+            # TODO: Favor eyes detected in approximately horizontal pairs. Prefer the most horizontal largest pair. 
+            # TODO: Normalize search area size to about 10–15 kpx per single tracked eye (different if we found lots of objects)
+            # get the image size, then crop to only the area we feel is relevant
+            (upper_left, lower_right), cropped_gray = chase_crop(gray, objects)
 
-        scale_factor = 1
-        if objects is not None and (len(objects) == 1 or len(objects) == 2):
-            # if the search area is huge, resize it to 100 px high
-            ch, cw = cropped_gray.shape
-            scale_factor = 100. / ch
+            scale_factor = 1
+            if objects is not None and (len(objects) == 1 or len(objects) == 2):
+                # if the search area is huge, resize it to 100 px high
+                ch, cw = cropped_gray.shape
+                scale_factor = target_search_height / ch
+                if scale_factor >= 0.75:
+                    scale_factor = 1
+            elif objects is None or len(objects) == 0:
+                # if we're doing a whole frame search, ensure we don't search more than about 100 kpx
+                square_scale_factor = max_search_pixels / cropped_gray.size
+                if square_scale_factor < 0.5625: # 0.75 ** 2
+                    scale_factor = math.sqrt(square_scale_factor)
+                else:
+                    scale_factor = 1
+
             if scale_factor < 0.75:
                 cropped_gray = cv2.resize(cropped_gray, (0,0), fx=scale_factor, fy=scale_factor)
+
+            kpx_stats.push(cropped_gray.size / 1000.)
+            scale_stats.push(scale_factor)
+
+            faces, eyes, objects = None, None, None
+
+            #faces = face_cascade.detectMultiScale(cropped_gray)
+            objects_raw = eye_cascade.detectMultiScale(cropped_gray)
+            #objects = face_cascade.detectMultiScale(cropped_gray)
+
+            # normalize object coords to full frame
+            objects = [(
+                    int(x / scale_factor) + upper_left[0], 
+                    int(y / scale_factor) + upper_left[1], 
+                    int(w / scale_factor), 
+                    int(h / scale_factor))\
+                for x, y, w, h in objects_raw]
+
+            objects = objects[:1]
+
+        #    objects = []
+        #    for (x,y,w,h) in faces:
+        #        roi_gray = cropped_gray[y:y+h, x:x+w]
+        #        objects = [(ex + x, ey + y, ew, eh) for ex, ey, ew, eh in eye_cascade.detectMultiScale(roi_gray)]
+
+            # todo: if >2 objects, eliminate all but the two to existing objects
+            if len(objects) > 0:
+                #x, y = [sum(l)/len(l) for l in zip(*[(x + w / 2.,y + h / 2.) for x,y,w,h in objects])]
+                #print([(x + w/2., y+w/2.) for x, y, w, h in objects])
+                #print(zip(*[(x + w/2., y + h/2.) for x, y, w, h in objects]))
+                x, y = [(max(l) + min(l)) / 2. for l in zip(*[(x + w/2., y + h/2.) for x, y, w, h in objects])]
+                #print((x, y))
             else:
-                scale_factor = 1
+                x, y = None, None
 
-        kpx_stats.push(cropped_gray.size / 1000.)
-        scale_stats.push(scale_factor)
+            # Display the resulting frame
+            if visualize is True:
+                display(faces=faces, 
+                        objects=objects, 
+                        coords=(x,y), 
+                        boxes=[(upper_left, lower_right)],
+                        img=frame)
 
-        faces, eyes, objects = None, None, None
+            if len(objects) > 0:
+                # if we found objects, make sure the timeout counters are cleared
+                missing_since = None
+                delay_until = None
+            else:
+                logging.debug("Missing!")
+                if missing_since is None:
+                    # if no objects, found, ensure the missing_since timer is set
+                    missing_since = time.time()
+                else:
+                    # if we haven't seen an object in a while, search less often
+                    if time.time() - missing_since > realtime_search_timeout:
+                        delay_until = time.time() + slow_search_delay
+                        logging.info("Missed object for {} s, delaying until {} ({} s)".format(
+                                realtime_search_timeout, 
+                                delay_until, 
+                                slow_search_delay
+                            ))
 
-        #faces = face_cascade.detectMultiScale(cropped_gray)
-        objects_raw = eye_cascade.detectMultiScale(cropped_gray)
-        #objects = face_cascade.detectMultiScale(cropped_gray)
-
-        # normalize object coords to full frame
-        objects = [(
-                int(x / scale_factor) + upper_left[0], 
-                int(y / scale_factor) + upper_left[1], 
-                int(w / scale_factor), 
-                int(h / scale_factor))\
-            for x, y, w, h in objects_raw]
-
-        objects = objects[:1]
-
-    #    objects = []
-    #    for (x,y,w,h) in faces:
-    #        roi_gray = cropped_gray[y:y+h, x:x+w]
-    #        objects = [(ex + x, ey + y, ew, eh) for ex, ey, ew, eh in eye_cascade.detectMultiScale(roi_gray)]
-
-        # todo: if >2 objects, eliminate all but the two to existing objects
-        if len(objects) > 0:
-            #x, y = [sum(l)/len(l) for l in zip(*[(x + w / 2.,y + h / 2.) for x,y,w,h in objects])]
-            #print([(x + w/2., y+w/2.) for x, y, w, h in objects])
-            #print(zip(*[(x + w/2., y + h/2.) for x, y, w, h in objects]))
-            x, y = [(max(l) + min(l)) / 2. for l in zip(*[(x + w/2., y + h/2.) for x, y, w, h in objects])]
-            #print((x, y))
-        else:
-            x, y = None, None
-
-        # Display the resulting frame
-        if visualize is True:
-            display(faces=faces, 
-                    objects=objects, 
-                    coords=(x,y), 
-                    boxes=[(upper_left, lower_right)],
-                    img=frame)
-
-        yield x, y
+            yield x, y
+            
 
 def dot_tracker(camera_frames):
     def kp_to_xy(kp):
