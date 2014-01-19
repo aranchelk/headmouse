@@ -5,6 +5,8 @@ Headmouse!
 '''
 
 import logging
+logger = logging.getLogger(__name__)
+
 import time
 import threading
 import sys
@@ -15,12 +17,13 @@ import re
 try:
     import pymouse
 except ImportError:
-    logging.warn("Unable to load PyMouse. Install PyUserinput for direct mouse control.")
+    logger.warn("Unable to load PyMouse. Install PyUserinput for direct mouse control.")
 
 import cv2
 
 import hmCam
 import hmFilterData as filter
+import util
 
 try:
     import arduinoSerial
@@ -77,7 +80,7 @@ def pymouse_output(config=None):
         x = max(0, min(x_max, x + dx))
         y = max(0, min(y_max, y + dy))
         if x < 0 or x_max < x or y < 0 or y_max < y:
-            logging.debug("{}, {}".format(x, y))
+            logger.debug("{}, {}".format(x, y))
         mouse.move(x, y)
 
 def get_config(custom_config_file=None):
@@ -89,6 +92,8 @@ def get_config(custom_config_file=None):
         'input': 'camera',
         'input_tracker': 'dot_tracker',
         'input_visualize': True,
+        'input_realtime_search_timeout': 2.0,
+        'input_slow_search_delay': 2.0,
 
         'input_camera_name': 0,
         'input_camera_resolution': (640, 480),
@@ -97,6 +102,8 @@ def get_config(custom_config_file=None):
         'acceleration': 2.3,
         'sensitivity': 2.0,
         'smoothing': 0.90,
+
+        'verbosity': 3,
     }
 
     # parse config files and override hardcoded defaults
@@ -119,11 +126,22 @@ def get_config(custom_config_file=None):
         config['input_camera_resolution'] = [int(x) for x in re.split(r'x|, *', config['input_camera_resolution'])]
 
     # int config fields
-    for field in ('input_camera_name', 'input_camera_fps', 'arduino_baud'):
+    for field in (
+            'input_camera_name', 
+            'input_camera_fps', 
+            'arduino_baud',
+            'verbosity'
+        ):
         config[field] = int(config[field])
 
     # float config fields
-    for field in ('acceleration', 'sensitivity', 'smoothing'):
+    for field in (
+            'acceleration', 
+            'sensitivity', 
+            'smoothing', 
+            'input_realtime_search_timeout', 
+            'input_slow_search_delay'
+        ):
         config[field] = float(config[field])
 
     return config
@@ -131,6 +149,8 @@ def get_config(custom_config_file=None):
 def main():
     '''Headmouse main loop'''
     config = get_config()
+
+    logging.getLogger().setLevel([logging.ERROR, logging.WARN, logging.INFO, logging.DEBUG][config['verbosity']])
 
     # output driver setup
     # TODO: restrict loadable generaton functions for security
@@ -148,30 +168,22 @@ def main():
         sensitivity=config['sensitivity']
         )
 
-    # main loop setup
-    startTime = time.time()
-    timeC = 0
-    loops = 0
-
     # input driver setup
     hmCam.visualize = config['input_visualize']
-    # todo: passthrough configs
+
+    fps_stats = util.Stats(util.Stats.inverse_normalized_interval_delta, "Average frame rate {:.0f} fps", 10)
     with hmCam.camera(
             tracker_name=config['input_tracker'],
             camera_id=config['input_camera_name'],
             resolution=config['input_camera_resolution'],
-            fps=config['input_camera_fps']
+            fps=config['input_camera_fps'],
+            realtime_search_timeout=config['input_realtime_search_timeout'],
+            slow_search_delay=config['input_slow_search_delay']
         ) as input_source:
         # main loop
         for coords in input_source:
-            loops += 1
-            timeC += time.time() - startTime
-            if loops == 10:
-                loops = 0
-                logging.info("fps is around: {}".format(10. / timeC))
-                timeC = 0
-            #print "time took:", time.time() - startTime
-            startTime = time.time()
+            fps_stats.push(time.time())
+
             # Capture frame-by-frame
 
             ### Filter Section ###

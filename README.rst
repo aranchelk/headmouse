@@ -3,6 +3,12 @@ Headmouse
 
 Computer vision head tracking mouse software.
 
+Usage
+-----
+
+[Mouse Keys](http://support.apple.com/kb/PH14235) on Mac OS X may be 
+useful. 
+
 Install
 -------
 
@@ -34,4 +40,13 @@ Or, if you have a ``headmouse`` virtualenv::
 
 PyMouse is needed for direct mouse control. I've been unable to get it to run in a
 virtualenv due to its needing PyObjC.
+
+It may be possible with easy_install: http://www.slevenbits.com/blog/2012/05/pyobjc-on-mac-os-x-10-7.html
+
+::
+
+	mkvirtualenv myenv
+	export MACOSX_DEPLOYMENT_TARGET=10.5
+	easy_install pyobjc-core
+	easy_install pyobjc
 
