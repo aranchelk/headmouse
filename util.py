@@ -1,6 +1,7 @@
 # coding=utf8
 
 import logging
+logger = logging.getLogger(__name__)
 import collections
 
 class Stats(collections.defaultdict):
@@ -44,5 +45,5 @@ class Stats(collections.defaultdict):
         if len(self.data) == self.interval:
             summary = self.func(self.data)
             summary = [summary] if not hasattr(summary, '__iter__') else summary
-            logging.info(self.message.format(*summary))
+            logger.info(self.message.format(*summary))
             self.data = []

@@ -5,7 +5,7 @@ Headmouse!
 '''
 
 import logging
-logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger(__name__)
 
 import time
 import threading
@@ -17,7 +17,7 @@ import re
 try:
     import pymouse
 except ImportError:
-    logging.warn("Unable to load PyMouse. Install PyUserinput for direct mouse control.")
+    logger.warn("Unable to load PyMouse. Install PyUserinput for direct mouse control.")
 
 import cv2
 
@@ -80,7 +80,7 @@ def pymouse_output(config=None):
         x = max(0, min(x_max, x + dx))
         y = max(0, min(y_max, y + dy))
         if x < 0 or x_max < x or y < 0 or y_max < y:
-            logging.debug("{}, {}".format(x, y))
+            logger.debug("{}, {}".format(x, y))
         mouse.move(x, y)
 
 def get_config(custom_config_file=None):
@@ -102,6 +102,8 @@ def get_config(custom_config_file=None):
         'acceleration': 2.3,
         'sensitivity': 2.0,
         'smoothing': 0.90,
+
+        'verbosity': 3,
     }
 
     # parse config files and override hardcoded defaults
@@ -124,7 +126,12 @@ def get_config(custom_config_file=None):
         config['input_camera_resolution'] = [int(x) for x in re.split(r'x|, *', config['input_camera_resolution'])]
 
     # int config fields
-    for field in ('input_camera_name', 'input_camera_fps', 'arduino_baud'):
+    for field in (
+            'input_camera_name', 
+            'input_camera_fps', 
+            'arduino_baud',
+            'verbosity'
+        ):
         config[field] = int(config[field])
 
     # float config fields
@@ -142,6 +149,8 @@ def get_config(custom_config_file=None):
 def main():
     '''Headmouse main loop'''
     config = get_config()
+
+    logging.getLogger().setLevel([logging.ERROR, logging.WARN, logging.INFO, logging.DEBUG][config['verbosity']])
 
     # output driver setup
     # TODO: restrict loadable generaton functions for security

@@ -9,6 +9,7 @@ TODO: move face/eye/dot tracking into *functions*, not generators, and have a ge
 '''
 
 import logging
+logger = logging.getLogger(__name__)
 import sys
 import contextlib
 import itertools
@@ -132,7 +133,7 @@ def chase_crop(frame, objects):
         (w_x0, w_y0), (w_x1, w_y1) = window
 
         '''
-        logging.debug("Cropping to {}x{}, actual {}x{}, bounding box ({},{}), ({},{})".format(
+        logger.debug("Cropping to {}x{}, actual {}x{}, bounding box ({},{}), ({},{})".format(
             window_width, window_height,
             w_x1 - w_x0, w_y1 - w_y0,
             w_x0, w_y0, w_x1, w_y1
@@ -241,7 +242,7 @@ def slow_empty_search(realtime_search_timeout, slow_search_delay):
                 missing_since = None
                 delay_until = None
             else:
-                logging.debug("No target objects found!")
+                logger.debug("No target objects found!")
                 if missing_since is None:
                     # if no objects, found, ensure the missing_since timer is set
                     missing_since = time.time()
@@ -249,7 +250,7 @@ def slow_empty_search(realtime_search_timeout, slow_search_delay):
                     # if we haven't seen an object in a while, search less often
                     if time.time() - missing_since > realtime_search_timeout:
                         delay_until = time.time() + slow_search_delay
-                        logging.info("Missed object for {} s, delaying until {} ({} s)".format(
+                        logger.info("Missed object for {} s, delaying until {} ({} s)".format(
                                 realtime_search_timeout, 
                                 delay_until, 
                                 slow_search_delay
