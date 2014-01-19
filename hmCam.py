@@ -256,7 +256,7 @@ def slow_empty_search(realtime_search_timeout, slow_search_delay):
                                 slow_search_delay
                             ))
 
-def dot_tracker(camera_frames):
+def dot_tracker(camera_frames, **kwargs):
     def kp_to_xy(kp):
 
         xList = []
