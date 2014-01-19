@@ -323,8 +323,9 @@ def display(faces=None, objects=None, kp=None, coords=(None, None), boxes=None, 
         if faces:
             for xt, yt, w, h in faces:
                 cv2.rectangle(img, (xt, yt), (xt + h, yt + h), (0, 255, 0))
-        for xt, yt, w, h in objects:
-            cv2.rectangle(img, (xt, yt), (xt + h, yt + h), (0, 255, 0))
+        if objects is not None:
+            for xt, yt, w, h in objects:
+                cv2.rectangle(img, (xt, yt), (xt + h, yt + h), (0, 255, 0))
         if kp:
             img = cv2.drawKeypoints(img,kp,color=(0,255,0), flags=0)
         if x is not None and y is not None:
