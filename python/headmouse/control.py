@@ -24,12 +24,12 @@ except ImportError:
 
 import cv2
 
-import hmCam
-import hmFilterData as filter
+import camera
+import filters
 import util
 
 try:
-    import arduinoSerial
+    import arduino_serial
 except ImportError:
     # TODO
     pass
@@ -61,7 +61,7 @@ def consumer(func):
 @consumer
 def arduino_output(config=None):
     '''Write mouse coordinates out to Arduino via serial'''
-    arduino = arduinoSerial.get_serial_link(config['arduino_port'], config['arduino_baud'], timeout=1, async=True, slices=3)
+    arduino = arduino_serial.get_serial_link(config['arduino_port'], config['arduino_baud'], timeout=1, async=True, slices=3)
     while True:
         x, y = yield
         arduino.move_mouse(x, y)
@@ -172,12 +172,12 @@ def main():
     output_driver = sys.modules[__name__].__dict__[config['output']](config=config)
 
     # signal proc chain setup
-    velocity_gen = filter.relative_movement()
-    sub_pix_gen = filter.sub_pix_trunc()
-    stateful_smooth_gen = filter.stateful_smoother()
-    input_smoother_gen = filter.ema_smoother(config['smoothing'])
-    #slow_smoother_gen = filter.slow_smoother(.6)
-    acceleration_gen = filter.accelerate_exp(
+    velocity_gen = filters.relative_movement()
+    sub_pix_gen = filters.sub_pix_trunc()
+    stateful_smooth_gen = filters.stateful_smoother()
+    input_smoother_gen = filters.ema_smoother(config['smoothing'])
+    #slow_smoother_gen = filters.slow_smoother(.6)
+    acceleration_gen = filters.accelerate_exp(
         p=ACCELERATION_EXPONENT,
         accel=config['acceleration'], 
         sensitivity=config['sensitivity']
@@ -185,12 +185,12 @@ def main():
 
     # input driver setup
     if config['input_visualize'] in ('false', 'False', 'no', 'No', '0'):
-        hmCam.visualize = False
+        camera.visualize = False
     elif config['input_visualize'] in ('true', 'True', 'yes', 'Yes', '1'):
-        hmCam.visualize = True
+        camera.visualize = True
 
     fps_stats = util.Stats(util.Stats.inverse_normalized_interval_delta, "Average frame rate {:.0f} fps", 10)
-    with hmCam.camera(
+    with camera.camera(
             tracker_name=config['input_tracker'],
             camera_id=config['input_camera_name'],
             resolution=config['input_camera_resolution'],
@@ -207,12 +207,12 @@ def main():
             ### Filter Section ###
             # take absolute position return relative position
             v = velocity_gen.send(coords)
-            v = filter.killOutliers(v, OUTLIER_VELOCITY_THRESHOLD)
+            v = filters.killOutliers(v, OUTLIER_VELOCITY_THRESHOLD)
 
             #v = slow_smoother_gen.send((v, 6))
             v = input_smoother_gen.send(v)
             v = acceleration_gen.send(v)
-            #v = filter.accelerate(v)
+            #v = filters.accelerate(v)
 
             dx, dy = sub_pix_gen.send(v)
 

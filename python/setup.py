@@ -27,6 +27,12 @@ setup(
 	packages=find_packages(exclude='tests'),
 	install_requires=required_modules,
 
+	entry_points={
+		"console_scripts": [
+			"headmouse = headmouse.headMouse:main"
+		]
+	},
+
 	tests_require=["nose"],
 	test_suite="nose.collector",
 
