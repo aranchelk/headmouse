@@ -29,7 +29,7 @@ setup(
 
 	entry_points={
 		"console_scripts": [
-			"headmouse = headmouse.headMouse:main"
+			"headmouse = headmouse:main"
 		]
 	},
 
