@@ -169,7 +169,10 @@ def main():
         )
 
     # input driver setup
-    hmCam.visualize = config['input_visualize']
+    if config['input_visualize'] in ('false', 'False', 'no', 'No', '0'):
+        hmCam.visualize = False
+    elif config['input_visualize'] in ('true', 'True', 'yes', 'Yes', '1'):
+        hmCam.visualize = True
 
     fps_stats = util.Stats(util.Stats.inverse_normalized_interval_delta, "Average frame rate {:.0f} fps", 10)
     with hmCam.camera(
