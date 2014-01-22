@@ -47,7 +47,7 @@ DEFAULT_SLOW_SEARCH_DELAY = 2.0
 TARGET_SEARCH_KILOPIXELS = 10
 MAX_SEARCH_KILOPIXELS = 100
 
-def dumbAverage(numList):
+def midrange(numList):
     return (max(numList) + min(numList))/2
 
 @contextlib.contextmanager
@@ -258,17 +258,19 @@ def slow_empty_search(realtime_search_timeout, slow_search_delay):
 
 def dot_tracker(camera_frames, **kwargs):
     def kp_to_xy(kp):
+        if kp is None:
+            return 0,0
+        else:
+            xList = []
+            yList = []
+            for k in kp:
+                xList.append(k.pt[0])
+                yList.append(k.pt[1])
 
-        xList = []
-        yList = []
-        for k in kp:
-            xList.append(k.pt[0])
-            yList.append(k.pt[1])
+            x = midrange(xList)
+            y = midrange(yList)
 
-        x = dumbAverage(xList)
-        y = dumbAverage(yList)
-
-        return x, y
+            return x, y
 
     def kp_to_xy_new(kp):
         max_x = kp[0].pt[0]
@@ -293,7 +295,7 @@ def dot_tracker(camera_frames, **kwargs):
             if max_x - k.pt[0] < x_thresh or k.pt[0] - min_x < x_thresh:
                 y_list.append(k.pt[1])
 
-        y = dumbAverage(y_list)
+        y = midrange(y_list)
 
         return x, y
 
@@ -308,14 +310,20 @@ def dot_tracker(camera_frames, **kwargs):
         if kp:
             x, y = kp_to_xy(kp)
 
-            # Display the resulting frame
-            if visualize is True:
-                display(kp=kp, coords=(x,y), img=gray)
+        # Display the resulting frame
+        if visualize is True:
+            display(kp=kp, coords=(x,y), img=gray)
 
-            yield x, y
+        if not x and not y:
+            x = 0
+            y = 0
+
+        yield x, y
 
 def display(faces=None, objects=None, kp=None, coords=(None, None), boxes=None, img=None):
-    x, y = coords
+
+    if coords:
+        x, y = coords
     if img is not None:
         if boxes is not None:
             for (x0,y0), (x1, y1) in boxes:
@@ -330,5 +338,6 @@ def display(faces=None, objects=None, kp=None, coords=(None, None), boxes=None, 
             img = cv2.drawKeypoints(img,kp,color=(0,255,0), flags=0)
         if x is not None and y is not None:
             cv2.circle(img, (int(x), int(y)), 4, (255, 255, 255), 3)
-        cv2.imshow('frame', cv2.flip(img, flipCode=1))
+
+    cv2.imshow('frame', cv2.flip(img, flipCode=1))
 

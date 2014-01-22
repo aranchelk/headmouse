@@ -87,7 +87,7 @@ def get_config(custom_config_file=None):
     config = {
         'output': 'arduino_output',
         'arduino_baud': 115200,
-        'arduino_port': 'COM7',
+        'arduino_port': '/dev/tty.usbmodemfa13141',
 
         'input': 'camera',
         'input_tracker': 'dot_tracker',
@@ -127,7 +127,7 @@ def get_config(custom_config_file=None):
 
     # int config fields
     for field in (
-            'input_camera_name', 
+            'input_camera_name',
             'input_camera_fps', 
             'arduino_baud',
             'verbosity'

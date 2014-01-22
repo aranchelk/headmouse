@@ -33,7 +33,7 @@ def get_serial_link(port, baud, timeout=1, fps=30, slices=8, async=True):
         return AsyncArduino(port, baud, timeout, fps, slices)
 
 
-def child_process_event_loop(conn, fps, slices, port='COM7', baud=115200, timeout=1):
+def child_process_event_loop(conn, fps, slices, port, baud, timeout=1):
     serial_handle = serial.Serial(port, baud, timeout=timeout)
     while conn.poll(3):
         try:
@@ -83,7 +83,7 @@ def move_mouse_interp(x, y, fps, interp_slices, serial_handle):
 
 
 class AsyncArduino:
-    def __init__(self, port='COM7', baud=115200, timeout=1, fps=30, slices=4):
+    def __init__(self, port, baud, timeout=1, fps=30, slices=4):
         #self.connection = serial.Serial(port, baud, timeout=timeout)
         self.fps = fps
         self.interp_slices = slices
@@ -91,7 +91,7 @@ class AsyncArduino:
         self.baud = baud
 
         parent_conn, child_conn = Pipe()
-        p = Process(target=child_process_event_loop, args=(child_conn, fps, slices))
+        p = Process(target=child_process_event_loop, args=(child_conn, fps, slices, port, baud))
         p.start()
         self.__child_process = p
         self.__child_process_connection = parent_conn
