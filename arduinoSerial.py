@@ -5,6 +5,7 @@ Write to stdin to serial
 '''
 
 import logging
+logger = logging.getLogger(__name__)
 import random
 import operator
 import threading
@@ -15,7 +16,7 @@ from multiprocessing import Process, Pipe
 try:
     import serial
 except ImportError:
-    logging.warn("Unable to load PySerial. No Arduino output available.")
+    logger.warn("Unable to load PySerial. No Arduino output available.")
     raise
 
 class SyncArduino:

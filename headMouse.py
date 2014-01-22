@@ -5,6 +5,9 @@ Headmouse!
 '''
 
 import logging
+
+# initial log config to handle load/import time errors
+logging.basicConfig(level=logging.WARN)
 logger = logging.getLogger(__name__)
 
 import time
@@ -28,6 +31,7 @@ import util
 try:
     import arduinoSerial
 except ImportError:
+    # TODO
     pass
 
 GLOBAL_CONFIG_FILE = "/etc/headmouse.conf"
@@ -150,10 +154,21 @@ def main():
     '''Headmouse main loop'''
     config = get_config()
 
-    logging.getLogger().setLevel([logging.ERROR, logging.WARN, logging.INFO, logging.DEBUG][config['verbosity']])
+    # configure logging manually so we can use runtime config settings
+    log_level = [logging.ERROR, logging.WARN, logging.INFO, logging.DEBUG][config['verbosity']]
+
+    # must get root logger, set its level, attach handler, and set its level
+    root_logger = logging.getLogger('')
+    console = logging.StreamHandler()
+
+    root_logger.setLevel(log_level)
+    console.setLevel(log_level)
+
+    root_logger.addHandler(console)
 
     # output driver setup
     # TODO: restrict loadable generaton functions for security
+    # TODO: driver loading system that doesn't depend on __main__ - breaks cProfile
     output_driver = sys.modules[__name__].__dict__[config['output']](config=config)
 
     # signal proc chain setup
