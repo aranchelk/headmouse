@@ -6,8 +6,17 @@ Computer vision head tracking mouse software.
 Usage
 -----
 
-[Mouse Keys](http://support.apple.com/kb/PH14235) on Mac OS X may be 
-useful. 
+[Mouse Keys](http://support.apple.com/kb/PH14235) on Mac OS X may be useful. 
+
+**Configuration**
+
+``headmouse`` can be configured by placing an INI file in ``~/.headmouse``::
+
+    [headmouse]
+
+	acceleration = 10
+	sensitivity = 2
+	smoothing = 0.4
 
 Install
 -------
