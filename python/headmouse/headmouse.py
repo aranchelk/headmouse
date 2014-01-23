@@ -107,6 +107,7 @@ def get_config(custom_config_file=None):
         'sensitivity': 2.0,
         'smoothing': 0.90,
         'output_smoothing': 0.90,
+        'distance_scaling': True,
 
         'verbosity': 3,
     }
@@ -149,6 +150,15 @@ def get_config(custom_config_file=None):
             'input_slow_search_delay'
         ):
         config[field] = float(config[field])
+
+    # bool config fields
+    for field in (
+            'distance_scaling',
+        ):
+        if isinstance(config[field], basestring):
+            config[field] = config[field].lower() in ("true", "1", "t", "#t", "yes")
+        else:
+            config[field] = bool(config[field])
 
     return config
 
@@ -203,15 +213,19 @@ def main():
             slow_search_delay=config['input_slow_search_delay']
         ) as input_source:
         # main loop
-        for coords in input_source:
+        for x, y, distance in input_source:
             fps_stats.push(time.time())
 
             # Capture frame-by-frame
 
             ### Filter Section ###
             # take absolute position return relative position
-            v = velocity_gen.send(coords)
+            v = velocity_gen.send((x, y))
             v = filters.killOutliers(v, OUTLIER_VELOCITY_THRESHOLD)
+
+            if config['distance_scaling']:
+                dx, dy = v
+                v = dx * distance, dy * distance
 
             #v = slow_smoother_gen.send((v, 6))
             v = input_smoother_gen.send(v)
