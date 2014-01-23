@@ -203,15 +203,17 @@ def main():
             slow_search_delay=config['input_slow_search_delay']
         ) as input_source:
         # main loop
-        for coords in input_source:
+        for x, y, distance in input_source:
             fps_stats.push(time.time())
 
             # Capture frame-by-frame
 
             ### Filter Section ###
             # take absolute position return relative position
-            v = velocity_gen.send(coords)
-            v = filters.killOutliers(v, OUTLIER_VELOCITY_THRESHOLD)
+            v = velocity_gen.send((x, y))
+            dx, dy = filters.killOutliers(v, OUTLIER_VELOCITY_THRESHOLD)
+
+            v = dx * distance, dy * distance
 
             #v = slow_smoother_gen.send((v, 6))
             v = input_smoother_gen.send(v)

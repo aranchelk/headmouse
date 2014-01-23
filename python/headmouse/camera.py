@@ -27,6 +27,7 @@ import util
 EYE_CASCADE_FILE = pkg_resources.resource_filename(
         __name__, 
         'data/cascades/haarcascade_lefteye_2splits.xml'
+        #'data/cascades/Nariz.xml'
     )
 
 visualize = False
@@ -90,7 +91,7 @@ def middle_quarter_crop(frame, objects=None):
     height, width = frame.shape
     (w_x0, w_y0), (w_x1, w_y1) = ((1./4) * width, (1./4) * height), ((3./4) * width, (3./4) * height)
     return ((w_x0, w_y0), (w_x1, w_y1)), frame[ w_y0:w_y1, w_x0:w_x1 ]
-    
+
 def chase_crop(frame, objects):
     '''
     "Chase camera" cropper
@@ -144,6 +145,7 @@ def eye_tracker(
     ):
     eye_cascade = cv2.CascadeClassifier(eye_cascade_file)
     objects = []
+    distance = 1
 
     # precompute values used for search area scaling computations
     target_search_height = math.sqrt(TARGET_SEARCH_KILOPIXELS * 1000.0)
@@ -153,6 +155,7 @@ def eye_tracker(
     kpx_stats = util.Stats(util.Stats.quartiles, "Kilopixels processed: [{:.1f}, {:.1f}, {:.1f}, {:.1f}, {:.1f}]", interval = 30)
     scale_stats = util.Stats(util.Stats.quartiles, "Scale factors: [{:.2f}, {:.2f}, {:.2f}, {:.2f}, {:.2f}]", interval = 30)
     cpu_stats = util.Stats(util.Stats.average, "Average CPU usage {}%", interval = 30)
+    distance_stats = util.Stats(util.Stats.quartiles, "Computed distances: [{:.1f}, {:.1f}, {:.1f}, {:.1f}, {:.1f}]", interval = 60)
 
     # drop frames based on active vs. no objects found tracking mode
     frame_rate_manager = slow_empty_search(realtime_search_timeout, slow_search_delay)
@@ -208,6 +211,7 @@ def eye_tracker(
             if len(objects) > 0:
                 # take the middle point between the extreme x and y coords as the usable center point
                 x, y = [(max(l) + min(l)) / 2. for l in zip(*[(x + w/2., y + h/2.) for x, y, w, h in objects])]
+                distance = float(gray.shape[0]) / objects[0][3]
             else:
                 x, y = None, None
 
@@ -220,7 +224,12 @@ def eye_tracker(
                         img=frame
                     )
             frame_rate_manager.send(len(objects))
-            yield x, y
+
+            distance_stats.push(distance)
+
+            # now, scale the output by the inverse of the distance to the user, so 
+            # moving in close to the camera gives finer, not coarser, control
+            yield x, y, distance
             
 
 def slow_empty_search(realtime_search_timeout, slow_search_delay):
@@ -250,6 +259,8 @@ def slow_empty_search(realtime_search_timeout, slow_search_delay):
                             ))
 
 def dot_tracker(camera_frames, **kwargs):
+    # TODO: real distance, or measured fixed distance value
+    distance = 10.0
     def kp_to_xy(kp):
         if kp is None:
             return 0,0
@@ -311,7 +322,7 @@ def dot_tracker(camera_frames, **kwargs):
             x = 0
             y = 0
 
-        yield x, y
+        yield x, y, distance
 
 def display(faces=None, objects=None, kp=None, coords=(None, None), boxes=None, img=None):
 
