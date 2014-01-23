@@ -92,6 +92,11 @@ def middle_quarter_crop(frame, objects=None):
     (w_x0, w_y0), (w_x1, w_y1) = ((1./4) * width, (1./4) * height), ((3./4) * width, (3./4) * height)
     return ((w_x0, w_y0), (w_x1, w_y1)), frame[ w_y0:w_y1, w_x0:w_x1 ]
 
+def unity_crop(frame, objects=None):
+    height, width = frame.shape
+    return ((0,0), (width, height)), frame
+    
+
 def chase_crop(frame, objects):
     '''
     "Chase camera" cropper
