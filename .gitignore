@@ -4,3 +4,4 @@
 *.pyc
 README.html
 *.swp
+*.egg-info/

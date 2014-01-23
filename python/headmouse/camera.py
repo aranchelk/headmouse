@@ -15,6 +15,7 @@ import contextlib
 import itertools
 import time
 import math
+import pkg_resources
 
 import cv2
 import psutil
@@ -23,13 +24,10 @@ import util
 
 #Todo: Separate camera setup for algorithm setup.
 
-EYE_CASCADE_FILE = 'casacades/haarcascade_eye.xml'
-EYE_CASCADE_FILE = 'cascades/frontalEyes35x16.xml'
-EYE_CASCADE_FILE = 'casacades/oneEye.xml'
-EYE_CASCADE_FILE = 'casacades/reye.xml'
-EYE_CASCADE_FILE = 'cascades/haarcascade_lefteye_2splits.xml'
-
-FACE_CASCADE_FILE = 'cascades/haarcascade_frontalface_default.xml'
+EYE_CASCADE_FILE = pkg_resources.resource_filename(
+        __name__, 
+        'data/cascades/haarcascade_lefteye_2splits.xml'
+    )
 
 visualize = False
 
@@ -86,11 +84,6 @@ def camera(
 
     cap.release()
     cv2.destroyAllWindows()
-
-def face_tracker(camera_frames, face_cascade_file=FACE_CASCADE_FILE):
-    face_cascade = cv2.CascadeClassifier(face_cascade_file)
-    for frame in camera_frames():
-        raise NotImplemented()
 
 def middle_quarter_crop(frame, objects=None):
     # static crop

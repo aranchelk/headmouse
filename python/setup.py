@@ -27,6 +27,16 @@ setup(
 	packages=find_packages(exclude='tests'),
 	install_requires=required_modules,
 
+	package_data={
+		'headmouse': ['data/cascades/*.xml'],
+	},
+
+	entry_points={
+		"console_scripts": [
+			"headmouse = headmouse:main"
+		]
+	},
+
 	tests_require=["nose"],
 	test_suite="nose.collector",
 
