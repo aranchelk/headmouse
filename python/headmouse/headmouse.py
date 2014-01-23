@@ -106,6 +106,7 @@ def get_config(custom_config_file=None):
         'acceleration': 2.3,
         'sensitivity': 2.0,
         'smoothing': 0.90,
+        'output_smoothing': 0.90,
 
         'verbosity': 3,
     }
@@ -143,6 +144,7 @@ def get_config(custom_config_file=None):
             'acceleration', 
             'sensitivity', 
             'smoothing', 
+            'output_smoothing', 
             'input_realtime_search_timeout', 
             'input_slow_search_delay'
         ):
@@ -183,6 +185,8 @@ def main():
         sensitivity=config['sensitivity']
         )
 
+    output_smoother = filters.ema_smoother(config['output_smoothing'])
+
     # input driver setup
     if config['input_visualize'] in ('false', 'False', 'no', 'No', '0'):
         camera.visualize = False
@@ -218,6 +222,8 @@ def main():
 
             # mirror motion on x-axis
             dx *= -1
+
+            dx, dy = output_smoother.send((dx, dy))
 
             output_driver.send((dx,dy))
 
