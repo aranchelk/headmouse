@@ -154,6 +154,7 @@ def get_config(custom_config_file=None):
     # bool config fields
     for field in (
             'distance_scaling',
+            'input_visualize',
         ):
         if isinstance(config[field], basestring):
             config[field] = config[field].lower() in ("true", "1", "t", "#t", "yes")
@@ -198,10 +199,7 @@ def main():
     output_smoother = filters.ema_smoother(config['output_smoothing'])
 
     # input driver setup
-    if config['input_visualize'] in ('false', 'False', 'no', 'No', '0'):
-        camera.visualize = False
-    elif config['input_visualize'] in ('true', 'True', 'yes', 'Yes', '1'):
-        camera.visualize = True
+    camera.visualize = config['input_visualize']
 
     fps_stats = util.Stats(util.Stats.inverse_normalized_interval_delta, "Average frame rate {:.0f} fps", 10)
     with camera.camera(
