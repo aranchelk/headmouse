@@ -1,5 +1,6 @@
 numpy
 pyserial
+pyobjc-core
 pyobjc
 PyUserinput
 psutil
