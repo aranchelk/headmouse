@@ -39,11 +39,10 @@ On Mac OS X::
 	brew install opencv
 	export PYTHONPATH=/usr/local/lib/python2.7/site-packages:$PYTHONPATH
 
-Or, if you have a ``headmouse`` virtualenv::
+Or, if you have a virtualenv using Python 2.7::
 
-	cd ~/.virtualenvs/headmouse/lib/python2.7/site-packages
-	ln -s /usr/local/Cellar/opencv/2.4.7.1/lib/python2.7/site-packages/cv.py
-	ln -s /usr/local/Cellar/opencv/2.4.7.1/lib/python2.7/site-packages/cv2.so
+    ls /usr/local/lib/python2.7/site-packages/cv* |\
+        xargs -I foo ln -s foo "${VIRTUAL_ENV}/lib/python2.7/site-packages/"
 
 **PyMouse/PyUserinput**
 
