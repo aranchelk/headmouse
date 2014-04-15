@@ -4,8 +4,6 @@ from setuptools import setup, find_packages
 
 required_modules = [
 	"numpy",
-	"pyserial",
-	"PyUserinput",
 	"psutil",
 	]
 
