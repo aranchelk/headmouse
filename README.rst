@@ -34,19 +34,21 @@ To get the OpenCV official ``cv2`` wrapper:
 
 On Mac OS X::
 
-	pip install headmouse
+    mkvirtualenv headmouse
+    
+    # Then install OpenCV, and link python files into VE
+    #PYTHON_PATH=${VIRTUAL_ENV}/lib/python*/site-packages brew install opencv
 
-	brew install opencv
-	export PYTHONPATH=/usr/local/lib/python2.7/site-packages:$PYTHONPATH
-
-Or, if you have a virtualenv using Python 2.7::
-
-    ls /usr/local/lib/python2.7/site-packages/cv* |\
+    brew install opencv
+    ls $(brew --prefix)/lib/python2.7/site-packages/cv* |\
         xargs -I foo ln -s foo "${VIRTUAL_ENV}/lib/python2.7/site-packages/"
 
-**PyMouse/PyUserinput**
+    # Then install as usual
+	pip install headmouse
 
-PyMouse is needed for direct mouse control. I've been unable to get it to run in a
+**PyMouse**
+
+PyMouse is needed for direct mouse control. I've been unable to reproduce installing it in a
 virtualenv due to its needing PyObjC.
 
 It may be possible with easy_install: http://www.slevenbits.com/blog/2012/05/pyobjc-on-mac-os-x-10-7.html
