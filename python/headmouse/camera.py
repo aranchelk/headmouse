@@ -263,6 +263,7 @@ def slow_empty_search(realtime_search_timeout, slow_search_delay):
                                 slow_search_delay
                             ))
 
+
 def dot_tracker(camera_frames, **kwargs):
     # TODO: real distance, or measured fixed distance value
     distance = 10.0
@@ -270,43 +271,18 @@ def dot_tracker(camera_frames, **kwargs):
         if kp is None:
             return 0,0
         else:
-            xList = []
-            yList = []
+            x_list = []
+            y_list = []
             for k in kp:
-                xList.append(k.pt[0])
-                yList.append(k.pt[1])
-
-            x = midrange(xList)
-            y = midrange(yList)
-
-            return x, y
-
-    def kp_to_xy_new(kp):
-        max_x = kp[0].pt[0]
-        min_x = kp[0].pt[0]
-        max_x_index = 0
-        min_x_index = 0
-
-        for i in range(len(kp)):
-            if kp[i].pt[0] > max_x:
-                max_x = kp[i].pt[0]
-                max_x_index = i
-            if kp[i].pt[0] < min_x:
-                min_x = kp[i].pt[0]
-                min_x_index = i
-
-        x = (max_x + min_x) / 2
-
-        x_thresh = .5
-        y_list = []
-
-        for k in kp:
-            if max_x - k.pt[0] < x_thresh or k.pt[0] - min_x < x_thresh:
+                x_list.append(k.pt[0])
                 y_list.append(k.pt[1])
 
-        y = midrange(y_list)
+            x = midrange(x_list)
+            y = midrange(y_list)
 
-        return x, y
+            box = ( ( min(x_list), min(y_list) ) , ( max(x_list), max(y_list) ) )
+
+            return x, y, box
 
     orb = cv2.ORB()
     for frame in camera_frames():
@@ -315,13 +291,14 @@ def dot_tracker(camera_frames, **kwargs):
         ret, thresh3 = cv2.threshold(gray,THRESHOLD,255,cv2.THRESH_BINARY)
 
         kp = orb.detect(thresh3,None)
+        #kp = thresh3;
 
         if kp:
-            x, y = kp_to_xy(kp)
+            x, y, box = kp_to_xy(kp)
 
         # Display the resulting frame
         if visualize is True:
-            display(kp=kp, coords=(x,y), img=gray)
+            display(kp=kp, coords=(x,y), img=gray, boxes=[box])
 
         if not x and not y:
             x = 0
@@ -336,7 +313,7 @@ def display(faces=None, objects=None, kp=None, coords=(None, None), boxes=None, 
     if img is not None:
         if boxes is not None:
             for (x0,y0), (x1, y1) in boxes:
-                cv2.rectangle(img, (x0,y0), (x1,y1), (0, 0, 255))
+                cv2.rectangle(img, (int(x0),int(y0)), (int(x1),int(y1)), (0, 0, 255))
         if faces:
             for xt, yt, w, h in faces:
                 cv2.rectangle(img, (xt, yt), (xt + h, yt + h), (0, 255, 0))
