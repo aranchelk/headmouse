@@ -263,26 +263,55 @@ def slow_empty_search(realtime_search_timeout, slow_search_delay):
                                 slow_search_delay
                             ))
 
+def kp_to_xy(kp):
+    if kp is None:
+        return 0,0
+    else:
+        x_list = []
+        y_list = []
+        for k in kp:
+            x_list.append(k.pt[0])
+            y_list.append(k.pt[1])
+
+        x = midrange(x_list)
+        y = midrange(y_list)
+
+        box = ( ( min(x_list), min(y_list) ) , ( max(x_list), max(y_list) ) )
+
+        return x, y, box
+
+class Dot_points:
+    #Given a list of keypoints returned by opencv feature detect algo, present usable data
+    def cursor_position(self):
+        if self.kp is not None:
+            return midrange(self.x_list), midrange(self.y_list), int((1 / self.x_range**2) * 600000 )
+        else:
+            return 0, 0, self.distance
+
+    def set_block_area(self, percent_x, percent_y, offset_x, offset_y):
+        if self.kp is not None:
+            self.block_area = [( ( min(self.x_list), min(self.y_list) ) , ( max(self.x_list), max(self.y_list) ) )]
+
+    def __init__(self, kp):
+        self.kp = kp
+
+        self.x_list = []
+        self.y_list = []
+
+        self.block_area = None
+
+        self.distance = 10.0
+
+        if kp is not None:
+            for k in kp:
+                self.x_list.append(k.pt[0])
+                self.y_list.append(k.pt[1])
+
+        self.x_range = max(self.x_list) - min(self.x_list)
+
 
 def dot_tracker(camera_frames, **kwargs):
     # TODO: real distance, or measured fixed distance value
-    distance = 10.0
-    def kp_to_xy(kp):
-        if kp is None:
-            return 0,0
-        else:
-            x_list = []
-            y_list = []
-            for k in kp:
-                x_list.append(k.pt[0])
-                y_list.append(k.pt[1])
-
-            x = midrange(x_list)
-            y = midrange(y_list)
-
-            box = ( ( min(x_list), min(y_list) ) , ( max(x_list), max(y_list) ) )
-
-            return x, y, box
 
     orb = cv2.ORB()
     for frame in camera_frames():
@@ -293,23 +322,18 @@ def dot_tracker(camera_frames, **kwargs):
         kp = orb.detect(thresh3,None)
         #kp = thresh3;
 
-        if kp:
-            x, y, box = kp_to_xy(kp)
+        dp = Dot_points(kp)
 
         # Display the resulting frame
         if visualize is True:
-            display(kp=kp, coords=(x,y), img=gray, boxes=[box])
+            display(kp=dp.kp, coords=dp.cursor_position(), img=gray, boxes=dp.block_area)
 
-        if not x and not y:
-            x = 0
-            y = 0
-
-        yield x, y, distance
+        yield dp.cursor_position()
 
 def display(faces=None, objects=None, kp=None, coords=(None, None), boxes=None, img=None):
 
     if coords:
-        x, y = coords
+        x, y, distance = coords
     if img is not None:
         if boxes is not None:
             for (x0,y0), (x1, y1) in boxes:
@@ -323,7 +347,7 @@ def display(faces=None, objects=None, kp=None, coords=(None, None), boxes=None, 
         if kp:
             img = cv2.drawKeypoints(img,kp,color=(0,255,0), flags=0)
         if x is not None and y is not None:
-            cv2.circle(img, (int(x), int(y)), 4, (255, 255, 255), 3)
+            cv2.circle(img, (int(x), int(y)), int(40/distance), (255, 255, 255), 3)
 
     cv2.imshow('frame', cv2.flip(img, flipCode=1))
 
