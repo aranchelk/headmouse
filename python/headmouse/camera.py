@@ -283,7 +283,7 @@ def kp_to_xy(kp):
 class Dot_points:
     #Given a list of keypoints returned by opencv feature detect algo, present usable data
     def cursor_position(self):
-        if self.kp is not None:
+        if len(self.kp) > 0:
             return midrange(self.x_list), midrange(self.y_list), int((1 / self.x_range**2) * 650000 )
         else:
             return 0, 0, self.distance
@@ -302,14 +302,12 @@ class Dot_points:
 
         self.distance = 10.0
 
-        if kp is not None:
+        if len(kp) > 0:
             for k in kp:
                 self.x_list.append(k.pt[0])
                 self.y_list.append(k.pt[1])
 
-
-
-        self.x_range = max(self.x_list) - min(self.x_list)
+                self.x_range = max(self.x_list) - min(self.x_list)
 
 
 def dot_tracker(camera_frames, **kwargs):
