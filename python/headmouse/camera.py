@@ -284,7 +284,7 @@ class Dot_points:
     #Given a list of keypoints returned by opencv feature detect algo, present usable data
     def cursor_position(self):
         if self.kp is not None:
-            return midrange(self.x_list), midrange(self.y_list), int((1 / self.x_range**2) * 600000 )
+            return midrange(self.x_list), midrange(self.y_list), int((1 / self.x_range**2) * 650000 )
         else:
             return 0, 0, self.distance
 
@@ -307,19 +307,22 @@ class Dot_points:
                 self.x_list.append(k.pt[0])
                 self.y_list.append(k.pt[1])
 
+
+
         self.x_range = max(self.x_list) - min(self.x_list)
 
 
 def dot_tracker(camera_frames, **kwargs):
     # TODO: real distance, or measured fixed distance value
-
-    orb = cv2.ORB()
+    detector = cv2.ORB()
+#    detector = cv2.SimpleBlobDetector()
+#    detector.setDouble('blobColor', 255)
     for frame in camera_frames():
         x, y = None, None
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         ret, thresh3 = cv2.threshold(gray,THRESHOLD,255,cv2.THRESH_BINARY)
 
-        kp = orb.detect(thresh3,None)
+        kp = detector.detect(thresh3)
         #kp = thresh3;
 
         dp = Dot_points(kp)
