@@ -61,7 +61,7 @@ def consumer(func):
 @consumer
 def arduino_output(config=None):
     '''Write mouse coordinates out to Arduino via serial'''
-    arduino = arduino_serial.get_serial_link(config['arduino_port'], config['arduino_baud'], timeout=1, async=False, slices=3)
+    arduino = arduino_serial.get_serial_link(config['arduino_port'], config['arduino_baud'], timeout=1, slices=3)
     while True:
         x, y = yield
         arduino.move_mouse(x, y)
@@ -245,4 +245,3 @@ def main():
 
 if __name__ == "__main__":
     sys.exit(main())
-

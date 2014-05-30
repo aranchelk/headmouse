@@ -24,10 +24,10 @@ class SyncArduino:
         self.connection = serial.Serial(port, baud, timeout=timeout)
 
     def move_mouse(self, x, y):
-        self.connection.write("32100\n%d\n%d\n" % (int(x),int(y)))
+        move_mouse(int(x), int(y), self.connection)
 
 
-def get_serial_link(port, baud, timeout=1, fps=30, slices=8, async=True):
+def get_serial_link(port, baud, timeout=1, fps=30, slices=3, async=False):
     if async is False:
         return SyncArduino(port, baud, timeout)
     else:
@@ -39,15 +39,23 @@ def child_process_event_loop(conn, fps, slices, port, baud, timeout=1):
     while conn.poll(3):
         try:
             x, y, port, baud = conn.recv()
-            move_mouse_interp(x,y, fps, slices, serial_handle=serial_handle)
-        except:
-            continue
+            move_mouse_interp(x,y, fps, slices, serial_handle)
+        except Exception as e:
+            h = open('./templog', 'a')
+            h.write(e)
 
-def move_mouse(x, y, serial_handle):
-    #print "move %s,%s\n\n" % (x, y)
-    #h = open('./templog', 'a')
-    serial_string = "32100\n%d\n%d\n" % (int(x),int(y))
-    serial_handle.write(serial_string)
+
+def move_mouse(x, y, handle):
+    try:
+        command = "32100\n%d\n%d\n" % (int(x),int(y))
+        handle.write(command)
+        f = '/Users/carl/sandbox/headmouse/python/headmouse/templog'
+        s = "move %s,%s\n\n" % (x, y)
+        h = open(f, 'a')
+        h.write(s)
+    except Exception as e:
+        h = open(f, 'a')
+        h.write('e')
 
 def delta_slice(delta, slice_quantity):
 
@@ -75,6 +83,7 @@ def delta_slice_x_y(x, y, slice_quantity):
 
 def move_mouse_interp(x, y, fps, interp_slices, serial_handle):
     #Split x,y delta into the a series of commands and schedule them to run
+    print 'starting mmi'
 
     i = 0
     inc = 1.0 / (fps * interp_slices)
@@ -84,7 +93,7 @@ def move_mouse_interp(x, y, fps, interp_slices, serial_handle):
 
 
 class AsyncArduino:
-    def __init__(self, port, baud, timeout=1, fps=30, slices=4):
+    def __init__(self, port, baud, timeout=1, fps=30, slices=3):
         #self.connection = serial.Serial(port, baud, timeout=timeout)
         self.fps = fps
         self.interp_slices = slices
@@ -107,8 +116,21 @@ class AsyncArduino:
 
 
 if __name__ == '__main__':
-    ard = get_async_arduino(5, 9600, 1, slices=10, fps=10)
+    #ard = AsyncArduino('/dev/tty.usbmodemfa13131', 9600, 1, slices=10, fps=10)
     #ard.move_mouse_interp(100,90)
 
-    ard.mouse_move(50,60)
+    #ard.move_mouse(50,60)
+    port = '/dev/tty.usbmodemfa13131'
+    baud = 115200
+    timeout = 1
+    x = 5
+    y = 5
+    fps = 30
+    slices = 3
 
+    sh = serial.Serial(port, baud, timeout=timeout)
+
+
+    for i in range(1, 100):
+        #move_mouse(x,y, sh)
+        move_mouse_interp(x, y, fps, slices, sh)

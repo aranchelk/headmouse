@@ -284,7 +284,11 @@ class Dot_points:
     #Given a list of keypoints returned by opencv feature detect algo, present usable data
     def cursor_position(self):
         if len(self.kp) > 0:
-            return midrange(self.x_list), midrange(self.y_list), int((1 / self.x_range**2) * 650000 )
+            if self.x_range > 100:
+                r = int((1 / self.x_range**2) * 650000)
+            else:
+                r = 10
+            return midrange(self.x_list), midrange(self.y_list), r
         else:
             return 0, 0, self.distance
 
