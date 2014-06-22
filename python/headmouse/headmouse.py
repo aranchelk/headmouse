@@ -7,7 +7,7 @@ Headmouse!
 import logging
 
 # initial log config to handle load/import time errors
-logging.basicConfig(level=logging.WARN)
+logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
 import time
@@ -16,11 +16,6 @@ import sys
 import os
 import ConfigParser
 import re
-
-try:
-    import pymouse
-except ImportError:
-    logger.warn("Unable to load PyMouse. Install PyUserinput for direct mouse control.")
 
 import cv2
 
@@ -76,6 +71,15 @@ def print_output(config=None):
 @consumer
 def pymouse_output(config=None):
     '''Write mouse coordinates out to pymouse'''
+
+    try:
+        logger.warn("Loading PyMouse; some versions may hang while loading for up to 30 seconds.")
+        import pymouse
+    except ImportError:
+        logger.warn("Unable to load PyMouse. Install PyMouse for direct mouse control.")
+    logger.info("Done Loading pymouse")
+
+
     mouse = pymouse.PyMouse()
     x_max, y_max = mouse.screen_size()
     while True:
