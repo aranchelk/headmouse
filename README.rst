@@ -6,7 +6,7 @@ Computer vision head tracking mouse software.
 Usage
 -----
 
-[Mouse Keys](http://support.apple.com/kb/PH14235) on Mac OS X may be useful. 
+`Mouse Keys <http://support.apple.com/kb/PH14235>`_ on Mac OS X may be useful. 
 
 **Configuration**
 
