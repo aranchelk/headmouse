@@ -1,6 +1,6 @@
-numpy
-pyserial
-pyobjc-core
-pyobjc
-PyMouse
-psutil
+numpy==1.8.1
+pyserial==2.7
+pyobjc-core==2.5.1
+pyobjc==2.5.1
+-e git+https://github.com/casebeer/PyMouse.git#egg=PyMouse
+psutil==2.1.0
