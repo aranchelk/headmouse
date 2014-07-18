@@ -50,12 +50,17 @@ Create a virtualenv for the ``headmouse`` program::
 
 Next, copy or link the OpenCV python bindings into the virtualenv. Do one of:
 
-1. ``cp $(brew --prefix)/lib/python2.7/site-packages/cv* ${VIRTUAL_ENV}/lib/python*/site-packages/``
+1. Copy the files::
+
+    cp $(brew --prefix)/lib/python2.7/site-packages/cv* \
+    ${VIRTUAL_ENV}/lib/python*/site-packages/
 
 or 
 
-2. ``ls $(brew --prefix)/lib/python2.7/site-packages/cv* |
-        xargs -I foo ln -s foo "${VIRTUAL_ENV}/lib/python2.7/site-packages/"``
+2. Symlink the files::
+
+    ls $(brew --prefix)/lib/python2.7/site-packages/cv* |\
+    xargs -I foo ln -s foo "${VIRTUAL_ENV}/lib/python2.7/site-packages/"
 
 or
 
