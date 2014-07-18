@@ -23,6 +23,8 @@ except ImportError:
     logger.warn("Unable to load PySerial. No Arduino output available.")
     raise
 
+SERIAL_COMMAND_BUFFER_LENGTH = 4
+
 class SyncArduino:
     def __init__(self, port='COM7', baud=115200, timeout=1):
         self.connection = serial.Serial(port, baud, timeout=timeout)
@@ -100,7 +102,7 @@ class AsyncArduino:
         self.port = port
         self.baud = baud
 
-        self.queue = multiprocessing.Queue(4)
+        self.queue = multiprocessing.Queue(SERIAL_COMMAND_BUFFER_LENGTH)
         p = multiprocessing.Process(
             target=child_process_event_handler, 
             args=(self.queue, fps, slices, port, baud)
