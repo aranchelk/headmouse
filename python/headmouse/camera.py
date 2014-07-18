@@ -224,7 +224,7 @@ def eye_tracker(
             if visualize is True:
                 display(
                         objects=objects, 
-                        coords=(x,y), 
+                        coords=(x, y, distance), 
                         boxes=[(upper_left, lower_right)],
                         img=frame
                     )
