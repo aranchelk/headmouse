@@ -6,12 +6,16 @@ Write to stdin to serial
 
 import logging
 logger = logging.getLogger(__name__)
+
 import random
 import operator
 import threading
 import itertools
 
-from multiprocessing import Process, Pipe
+import multiprocessing
+# need non-mp Queue for the Queue.Full exception
+import Queue
+import time
 
 try:
     import serial
@@ -33,26 +37,41 @@ def get_serial_link(port, baud, timeout=1, fps=30, slices=3, async=False):
     else:
         return AsyncArduino(port, baud, timeout, fps, slices)
 
+def child_process_event_handler(queue, fps, slices, port, baud, timeout=1):
+    '''
+    Subprocess handler
 
-def child_process_event_loop(conn, fps, slices, port, baud, timeout=1):
+    Run serial sending code in a separate process to avoid interfering
+    with OpenCV.
+    '''
+    def interpolated_deltas():
+        '''
+        Pull mouse coords of the Queue shared with the parent process,
+        then split them up into interpolated segments and yield the 
+        segments one at a time
+        '''
+        while True:
+            x, y = queue.get()
+            for d_x, d_y in delta_slice_x_y(x, y, slices):
+                yield d_x, d_y
+
+    logger.debug('In serial child handler')
+
     serial_handle = serial.Serial(port, baud, timeout=timeout)
-    while conn.poll(3):
-        try:
-            x, y, port, baud = conn.recv()
-            move_mouse_interp(x,y, fps, slices, serial_handle)
-        except Exception as e:
-            pass
+    interval = 1. / (fps * slices)
 
+    for d_x, d_y in interpolated_deltas():
+        move_mouse(d_x, d_y, serial_handle)
+        time.sleep(interval)
 
-def move_mouse(x, y, handle):
+def move_mouse(x, y, serial_handle):
     try:
-        command = "32100\n%d\n%d\n" % (int(x),int(y))
-        handle.write(command)
+        serial_string = "32100\n%d\n%d\n" % (int(x),int(y))
+        serial_handle.write(serial_string)
     except Exception as e:
-        pass
+        logging.error("Error writing to serial output")
 
 def delta_slice(delta, slice_quantity):
-
     delta_min_slice_val = int(delta / slice_quantity)
     delta_remainder = delta - delta_min_slice_val * slice_quantity
 
@@ -70,21 +89,8 @@ def delta_slice(delta, slice_quantity):
 
     return out_list
 
-
 def delta_slice_x_y(x, y, slice_quantity):
-    return zip(delta_slice(x, slice_quantity), delta_slice(y, slice_quantity))
-
-
-def move_mouse_interp(x, y, fps, interp_slices, serial_handle):
-    #Split x,y delta into the a series of commands and schedule them to run
-    print 'starting mmi'
-
-    i = 0
-    inc = 1.0 / (fps * interp_slices)
-    for x, y in delta_slice_x_y(x, y, interp_slices):
-        threading.Timer(inc * i, move_mouse, [x,y, serial_handle]).start()
-        i += 1
-
+    return zip(delta_slice(int(x), slice_quantity), delta_slice(int(y), slice_quantity))
 
 class AsyncArduino:
     def __init__(self, port, baud, timeout=1, fps=30, slices=3):
@@ -94,11 +100,13 @@ class AsyncArduino:
         self.port = port
         self.baud = baud
 
-        parent_conn, child_conn = Pipe()
-        p = Process(target=child_process_event_loop, args=(child_conn, fps, slices, port, baud))
+        self.queue = multiprocessing.Queue(4)
+        p = multiprocessing.Process(
+            target=child_process_event_handler, 
+            args=(self.queue, fps, slices, port, baud)
+        )
         p.start()
         self.__child_process = p
-        self.__child_process_connection = parent_conn
 
     def __del__(self):
         self.__child_process.join()
@@ -106,8 +114,12 @@ class AsyncArduino:
         pass
 
     def move_mouse(self, x, y):
-        self.__child_process_connection.send((x, y, self.port, self.baud))
-
+        # non-blocking; better to drop frames if the HW driver isn't keeping up
+        try:
+            self.queue.put_nowait((x, y))
+        except Queue.Full:
+            logger.debug("Dropping data, serial handler not keeping up")
+            pass
 
 if __name__ == '__main__':
     #ard = AsyncArduino('/dev/tty.usbmodemfa13131', 9600, 1, slices=10, fps=10)
