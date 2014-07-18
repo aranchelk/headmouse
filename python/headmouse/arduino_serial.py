@@ -41,21 +41,15 @@ def child_process_event_loop(conn, fps, slices, port, baud, timeout=1):
             x, y, port, baud = conn.recv()
             move_mouse_interp(x,y, fps, slices, serial_handle)
         except Exception as e:
-            h = open('./templog', 'a')
-            h.write(e)
+            pass
 
 
 def move_mouse(x, y, handle):
     try:
         command = "32100\n%d\n%d\n" % (int(x),int(y))
         handle.write(command)
-        f = '/Users/carl/sandbox/headmouse/python/headmouse/templog'
-        s = "move %s,%s\n\n" % (x, y)
-        h = open(f, 'a')
-        h.write(s)
     except Exception as e:
-        h = open(f, 'a')
-        h.write('e')
+        pass
 
 def delta_slice(delta, slice_quantity):
 
