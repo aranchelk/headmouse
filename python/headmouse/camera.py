@@ -16,6 +16,7 @@ import itertools
 import time
 import math
 import pkg_resources
+import tempfile
 
 import cv2
 import psutil
@@ -24,11 +25,20 @@ import util
 
 #Todo: Separate camera setup for algorithm setup.
 
-EYE_CASCADE_FILE = pkg_resources.resource_filename(
+cascade_file = tempfile.NamedTemporaryFile()
+try:
+    cascade_file.write(pkg_resources.resource_stream(
         __name__, 
         'data/cascades/haarcascade_lefteye_2splits.xml'
         #'data/cascades/Nariz.xml'
-    )
+    ).read())
+except:
+    with open('haarcascade_lefteye_2splits.xml', 'rb') as f:
+        cascade_file.write(f.read())
+finally:
+    cascade_file.flush()
+
+EYE_CASCADE_FILE = cascade_file.name
 
 visualize = False
 
