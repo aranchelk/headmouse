@@ -22,34 +22,54 @@ Install
 -------
 
 Install is messy. ``headmouse`` depends on OpenCV, which must be installed manually, 
-and provides its own, non-PyPi based Python wrapper. 
+and provides its own, non-PyPi based Python wrapper. Additionally, for direct mouse 
+control, ``headmouse`` requires PyMouse, which, on OS X, requires compiling PyObjC.
 
 **OpenCV**
 
-To get the OpenCV official ``cv2`` wrapper:
+The trickiest part of the install is compiling OpenCV, then making its ``cv2`` Python 
+bindings available to the virtualenv containing ``headmouse``.
+
+Generally, the steps are:
 
 - Install OpenCV
 - Install numpy
-- Link the cv2.so and cv2.py files into your PYTHONPATH
+- Somehow link the ``cv2.so`` and ``cv2.py`` files into your PYTHONPATH. This can be via the 
+  ``$PYTHONPATH`` evironment variable, which must be set each session, or by copying 
+  or symlinking these files into a directory already on the PYTHONPATH.
 
-On Mac OS X::
+**Mac OS X install**
 
-    mkvirtualenv headmouse
-    
-    # Then install OpenCV, and link python files into VE
-    #PYTHON_PATH=${VIRTUAL_ENV}/lib/python*/site-packages brew install opencv
+First, install OpenCV using Homebrew::
 
-    brew install opencv
-    ls $(brew --prefix)/lib/python2.7/site-packages/cv* |\
-        xargs -I foo ln -s foo "${VIRTUAL_ENV}/lib/python2.7/site-packages/"
+    $ brew install opencv
 
-    # Then install as usual
-	pip install headmouse
+Create a virtualenv for the ``headmouse`` program::
+
+   $ mkvirtualenv headmouse
+
+Next, copy or link the OpenCV python bindings into the virtualenv. Do one of:
+
+1. ``cp $(brew --prefix)/lib/python2.7/site-packages/cv* ${VIRTUAL_ENV}/lib/python*/site-packages/``
+
+or 
+
+2. ``ls $(brew --prefix)/lib/python2.7/site-packages/cv* |
+        xargs -I foo ln -s foo "${VIRTUAL_ENV}/lib/python2.7/site-packages/"``
+
+or
+
+3. Each time you run the `headmouse` program, first
+   ``export PYTHONPATH=$(brew --prefix)/lib/python2.7/site-packages:$PYTHONPATH``
+
+Now install the ``headmouse`` package itself. In the project's `python/` directory::
+
+    $ pip install -r requirements
+    $ pip install headmouse
 
 **PyMouse**
 
-PyMouse is needed for direct mouse control. I've been unable to reproduce installing it in a
-virtualenv due to its needing PyObjC.
+PyMouse is needed for direct mouse control. 
 
 It may be possible with easy_install: http://www.slevenbits.com/blog/2012/05/pyobjc-on-mac-os-x-10-7.html
 
