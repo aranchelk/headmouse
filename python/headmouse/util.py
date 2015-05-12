@@ -4,6 +4,23 @@ import logging
 logger = logging.getLogger(__name__)
 import collections
 
+def prep_gen(func):
+    '''
+    Decorator taking care of initial next() call to "sending" generators
+
+    From PEP-342
+    http://www.python.org/dev/peps/pep-0342/
+    '''
+    def wrapper(*args,**kw):
+        gen = func(*args, **kw)
+        next(gen)
+        return gen
+    wrapper.__name__ = func.__name__
+    wrapper.__dict__ = func.__dict__
+    wrapper.__doc__  = func.__doc__
+    return wrapper
+
+
 class Stats(collections.defaultdict):
     '''
     Collect stats to be logged only every *n* frames
