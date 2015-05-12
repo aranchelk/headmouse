@@ -22,9 +22,12 @@ import cv2
 import camera
 import filters
 import util
+import sys
 
 try:
-    import pymouse
+#    import pymouse
+    pymouse = None
+    pass
 except ImportError:
     logger.warn("Unable to load PyMouse. Install PyUserinput for direct mouse control.")
 
@@ -38,27 +41,10 @@ GLOBAL_CONFIG_FILE = "/etc/headmouse.conf"
 USER_CONFIG_FILE = os.path.expanduser("~/.headmouse")
 
 ACCELERATION_EXPONENT = 2
-OUTLIER_VELOCITY_THRESHOLD = 20
+OUTLIER_VELOCITY_THRESHOLD = 1000
 
-def consumer(func):
-    '''
-    Decorator taking care of initial next() call to "sending" generators
 
-    From PEP-342
-    http://www.python.org/dev/peps/pep-0342/
-    '''
-    def wrapper(*args,**kw):
-        gen = func(*args, **kw)
-        next(gen)
-        return gen
-    wrapper.__name__ = func.__name__
-    wrapper.__dict__ = func.__dict__
-    wrapper.__doc__  = func.__doc__
-    return wrapper
-
-## Output drivers
-
-@consumer
+@util.prep_gen
 def arduino_output(config=None):
     '''Write mouse coordinates out to Arduino via serial'''
     arduino = arduino_serial.get_serial_link(config['arduino_port'], config['arduino_baud'], timeout=1, slices=3)
@@ -66,14 +52,17 @@ def arduino_output(config=None):
         x, y = yield
         arduino.move_mouse(x, y)
 
-@consumer
+@util.prep_gen
 def print_output(config=None):
+
     '''Write mouse coordinate changes out to stdout'''
     while True:
         x, y = yield
-        print("{:d}, {:d}".format(x, y))
+        #print("{:f}, {:f}".format(x, y))
+        sys.stdout.write(str(x) + ', ' + str(y) + "\n")
+        sys.stdout.flush()
 
-@consumer
+@util.prep_gen
 def pymouse_output(config=None):
     '''Write mouse coordinates out to pymouse'''
 
@@ -118,7 +107,7 @@ def get_config(custom_config_file=None):
         'output_smoothing': 0.90,
         'distance_scaling': True,
 
-        'verbosity': 3,
+        'verbosity': 0,
     }
 
     # parse config files and override hardcoded defaults

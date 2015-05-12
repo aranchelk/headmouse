@@ -137,9 +137,10 @@ def accelerate_exp(p=2, accel=6, sensitivity=0):
         v_out = v_x * scale, v_y * scale
 
 
-def killOutliers(coords, threshold=20):
+def killOutliers(coords, threshold=2000):
     if math.fabs(coords[0]) > threshold or math.fabs(coords[1]) > threshold:
         logger.info("*** Outlier ***")
+        print 'outlier'
         return [0,0]
     else:
         return coords

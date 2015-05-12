@@ -3,142 +3,87 @@
 '''
 Write to stdin to serial
 '''
-
+import sys
 import logging
+import util
+import serial
+
 logger = logging.getLogger(__name__)
-
-import random
-import operator
-import threading
-import itertools
-
-import multiprocessing
-# need non-mp Queue for the Queue.Full exception
-import Queue
-import time
-
-try:
-    import serial
-except ImportError:
-    logger.warn("Unable to load PySerial. No Arduino output available.")
-    raise
 
 SERIAL_COMMAND_BUFFER_LENGTH = 4
 
-class SyncArduino:
-    def __init__(self, port='COM7', baud=115200, timeout=1):
-        self.connection = serial.Serial(port, baud, timeout=timeout)
 
-    def move_mouse(self, x, y):
-        move_mouse(int(x), int(y), self.connection)
-
-
-def get_serial_link(port, baud, timeout=1, fps=30, slices=3, async=False):
-    if async is False:
-        return SyncArduino(port, baud, timeout)
+def twos_comp(num):
+    if num < 0:
+        return num + 32767
     else:
-        return AsyncArduino(port, baud, timeout, fps, slices)
+        return num
 
-def child_process_event_handler(queue, fps, slices, port, baud, timeout=1):
-    '''
-    Subprocess handler
 
-    Run serial sending code in a separate process to avoid interfering
-    with OpenCV.
-    '''
-    def interpolated_deltas():
-        '''
-        Pull mouse coords of the Queue shared with the parent process,
-        then split them up into interpolated segments and yield the 
-        segments one at a time
-        '''
-        while True:
-            x, y = queue.get()
-            for d_x, d_y in delta_slice_x_y(x, y, slices):
-                yield d_x, d_y
+def ard_num_string(num):
+   return str(twos_comp(num)).zfill(5)
 
-    logger.debug('In serial child handler')
 
-    serial_handle = serial.Serial(port, baud, timeout=timeout)
-    interval = 1. / (fps * slices)
-
-    for d_x, d_y in interpolated_deltas():
-        move_mouse(d_x, d_y, serial_handle)
-        time.sleep(interval)
-
-def move_mouse(x, y, serial_handle):
+def send_mouse_command(x, y, serial_handle):
     try:
-        serial_string = "32100\n%d\n%d\n" % (int(x),int(y))
-        serial_handle.write(serial_string)
+        #serial_string = "32100" + ard_num_string(x) + ard_num_string(y)
+        serial_handle.write('m' + str(x)+ ',' + str(y) +'\n')
+        # serial_handle.write( + '\r\n')
+        # serial_handle.write(+ '\r\n')
+
+
     except Exception as e:
         logging.error("Error writing to serial output")
+#        print e
 
-def delta_slice(delta, slice_quantity):
-    delta_min_slice_val = int(delta / slice_quantity)
-    delta_remainder = delta - delta_min_slice_val * slice_quantity
+@util.prep_gen
+def move_mouse_gen(serial_handle):
+    while True:
+        x, y = yield
+        serial_handle.write('c1,' + str(x) + ',' + str(y) + ';')
 
-    delta_min_slice_list = [delta_min_slice_val] * slice_quantity
+def set_mouse_max_move(serial_handle, maxMove):
+    serial_handle.write('c2,' + str(maxMove))
 
-    delta_remainder_slice_list = [1] * delta_remainder
-    delta_remainder_slice_list += [0]*(slice_quantity - len(delta_remainder_slice_list))
 
-    multi_add = lambda a,b: map(operator.add, a,b)
+#def serial_device_discovery:
 
-    #http://stackoverflow.com/questions/17595590/correct-style-for-element-wise-operations-on-lists-without-numpy-python
-    out_list = multi_add(delta_min_slice_list, delta_remainder_slice_list)
 
-    random.shuffle(out_list)
 
-    return out_list
 
-def delta_slice_x_y(x, y, slice_quantity):
-    return zip(delta_slice(int(x), slice_quantity), delta_slice(int(y), slice_quantity))
-
-class AsyncArduino:
-    def __init__(self, port, baud, timeout=1, fps=30, slices=3):
-        #self.connection = serial.Serial(port, baud, timeout=timeout)
-        self.fps = fps
-        self.interp_slices = slices
-        self.port = port
-        self.baud = baud
-
-        self.queue = multiprocessing.Queue(SERIAL_COMMAND_BUFFER_LENGTH)
-        p = multiprocessing.Process(
-            target=child_process_event_handler, 
-            args=(self.queue, fps, slices, port, baud)
-        )
-        p.start()
-        self.__child_process = p
-
-    def __del__(self):
-        self.__child_process.join()
-        self.__child_process.terminate()
-        pass
-
-    def move_mouse(self, x, y):
-        # non-blocking; better to drop frames if the HW driver isn't keeping up
-        try:
-            self.queue.put_nowait((x, y))
-        except Queue.Full:
-            logger.debug("Dropping data, serial handler not keeping up")
-            pass
 
 if __name__ == '__main__':
-    #ard = AsyncArduino('/dev/tty.usbmodemfa13131', 9600, 1, slices=10, fps=10)
-    #ard.move_mouse_interp(100,90)
-
-    #ard.move_mouse(50,60)
-    port = '/dev/tty.usbmodemfa13131'
-    baud = 115200
+    import glob
+    #port = '/dev/tty.usbmodemfa131'
+    port = glob.glob('/dev/tty.usb*')[0]
+    baud = 57600 
     timeout = 1
-    x = 5
-    y = 5
-    fps = 30
-    slices = 3
+
+    maxMag = 32000
 
     sh = serial.Serial(port, baud, timeout=timeout)
+    mouse = move_mouse_gen(sh)
 
+    set_mouse_max_move(sh, 50)
 
-    for i in range(1, 100):
-        #move_mouse(x,y, sh)
-        move_mouse_interp(x, y, fps, slices, sh)
+    while True:
+        try:
+            line = sys.stdin.readline()
+            formatted = line.rstrip()
+            xy_list = formatted.split(', ')
+            x = int(round(float(xy_list[0])))
+            y = int(round(float(xy_list[1])))
+            # start temp limiter
+
+            if abs(x) > maxMag:
+                x = maxMag * abs(x) / x
+            if abs(y) > maxMag:
+                y = maxMag * abs(y) / y
+
+            # end temp limiter
+            mouse.send((x,y))
+            #4print x, y
+
+            #print sh.readline()
+        except Exception as e:
+            pass
