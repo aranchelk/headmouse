@@ -3,13 +3,13 @@ int serData[10];
 int controlM = 0;
 
 void setup() {                
-  //while (!Serial) {
+  //while (!Serial1) {
     //; // wait for serial port to connect. Needed for Leonardo only
   //}
   delay(3000);
   
-  //Serial.setTimeout(1);
-  Serial.begin(57600);
+  //Serial1.setTimeout(1);
+  Serial1.begin(57600);
   Mouse.begin();
 
   for(int i = 0; i<500; i++){
@@ -38,19 +38,24 @@ void loop() {
     }
     
     
-    if (Serial.find("c")) {
+    if (Serial1.find("c")) {
       // We've received the start of a control code
-      ctrlCode = Serial.parseInt();
+      ctrlCode = Serial1.parseInt();
+      
+      if (ctrlCode == 0) {
+        // Request for device info
+        Serial1.println("hm0.0.1");
+      }
         
       if (ctrlCode == 1) {
         // Received code to move mouse
         
-        xCarryOver += Serial.parseInt();
-        yCarryOver += Serial.parseInt();
+        xCarryOver += Serial1.parseInt();
+        yCarryOver += Serial1.parseInt();
       }
       
       if (ctrlCode == 2) {
-        maxMove = Serial.parseInt();
+        maxMove = Serial1.parseInt();
       }
       
     }

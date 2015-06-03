@@ -46,22 +46,29 @@ def set_mouse_max_move(serial_handle, maxMove):
     serial_handle.write('c2,' + str(maxMove))
 
 
-#def serial_device_discovery:
+def discover_serial_handle(glob_string = '/dev/tty.usb*'):
+    import glob
+    serial_interfaces = glob.glob(glob_string)
 
+    for port in serial_interfaces:
+        baud = 57600
+        timeout = 2
 
+        sh = serial.Serial(port, baud, timeout=timeout)
+        sh.write('c0')
+        sh.flush()
+        version_data = sh.readline().rstrip()
 
+        if version_data == unicode("hm0.0.1"):
+            print "Found serial on port:", port
+            return sh
 
+    sys.exit("Could not find serial port for Arduino headmouse.")
 
 if __name__ == '__main__':
-    import glob
-    #port = '/dev/tty.usbmodemfa131'
-    port = glob.glob('/dev/tty.usb*')[0]
-    baud = 57600 
-    timeout = 1
-
     maxMag = 32000
 
-    sh = serial.Serial(port, baud, timeout=timeout)
+    sh = discover_serial_handle()
     mouse = move_mouse_gen(sh)
 
     set_mouse_max_move(sh, 50)
@@ -73,17 +80,15 @@ if __name__ == '__main__':
             xy_list = formatted.split(', ')
             x = int(round(float(xy_list[0])))
             y = int(round(float(xy_list[1])))
-            # start temp limiter
 
+            # start temp limiter
             if abs(x) > maxMag:
                 x = maxMag * abs(x) / x
             if abs(y) > maxMag:
                 y = maxMag * abs(y) / y
-
             # end temp limiter
-            mouse.send((x,y))
-            #4print x, y
 
-            #print sh.readline()
+            mouse.send((x,y))
+
         except Exception as e:
             pass
