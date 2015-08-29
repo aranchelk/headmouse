@@ -51,14 +51,18 @@ def discover_serial_handle(glob_string = '/dev/tty.usb*'):
     serial_interfaces = glob.glob(glob_string)
 
     for port in serial_interfaces:
+        print "Trying port %s" % port
         baud = 57600
         timeout = 2
 
-        sh = serial.Serial(port, baud, timeout=timeout)
-        sh.write('c0')
-        sh.flush()
-        version_data = sh.readline().rstrip()
-
+        try:
+            sh = serial.Serial(port, baud, timeout=timeout)
+            sh.write('c0')
+            sh.flush()
+            version_data = sh.readline().rstrip()
+        except Exception:
+            continue
+    
         if version_data == unicode("hm0.0.1"):
             print "Found serial on port:", port
             return sh
