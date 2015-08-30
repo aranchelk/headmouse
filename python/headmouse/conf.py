@@ -31,6 +31,12 @@ base_config = {
         'verbosity': 0,
         }
 
+scale_data = {
+    'acceleration': (0, 3, .1),
+    'sensitivity': (0, 2, .1),
+    'smoothing': (0, 1, .05)
+}
+
 
 def config_from_file(config_file):
     config_parser.read([config_file])
