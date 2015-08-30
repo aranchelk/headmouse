@@ -32,6 +32,8 @@ base_config = {
         }
 
 scale_data = {
+    # Todo: Add default value as 4th param
+    # tuple(min, max, grad)
     'acceleration': (0, 3, .1),
     'sensitivity': (0, 2, .1),
     'smoothing': (0, 1, .05)
