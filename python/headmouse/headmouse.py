@@ -19,7 +19,7 @@ import re
 
 import cv2
 
-import camera
+import camera_old as camera
 import filters
 import util
 import sys
