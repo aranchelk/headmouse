@@ -2,7 +2,11 @@ int serValue = 0;
 int serData[10];
 int controlM = 0;
 
-void setup() {                
+void setup() {  
+  //Setup mouse buttons
+  pinMode(2,INPUT_PULLUP);
+  pinMode(3,INPUT_PULLUP);
+  
   //while (!Serial1) {
     //; // wait for serial port to connect. Needed for Leonardo only
   //}
@@ -16,6 +20,11 @@ void setup() {
     delay(5);
     Mouse.move(absMax(-25, 1), absMax(-25, 1), 0);
   }
+  
+  Serial1.println("Starting mouse emulation...");
+  delay(2000);
+  
+  Serial1.println("Starting mouse emulation...");
 }
 
 void loop() {
@@ -26,7 +35,6 @@ void loop() {
 
   // Get initial value
   while(true) {
-    
     while (xCarryOver != 0 || yCarryOver !=0) {
       int x = absMax(xCarryOver, maxMove);
       int y = absMax(yCarryOver, maxMove);
@@ -56,6 +64,10 @@ void loop() {
       
       if (ctrlCode == 2) {
         maxMove = Serial1.parseInt();
+      }
+      
+      if (ctrlCode == 3) {
+        Serial1.println("echo");
       }
       
     }
