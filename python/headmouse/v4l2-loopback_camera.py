@@ -1,13 +1,12 @@
 #!/usr/bin/env python
 
 # Intended to be run with v4l2 loopback camera
-# v4l2-ctl --list-devices
-# sudo modprobe v4l2loopback
-# ffmpeg -f video4linux2 -input_format mjpeg -s 640x480 -i /dev/video1 -vcodec rawvideo -pix_fmt gray -threads 0 -f v4l2 /dev/video2
 
 import cv2
 import time
 import uuid
+import os
+import subprocess
 
 def simple_fps(calc_interval):
     last_time = float(time.time())
@@ -55,6 +54,12 @@ class Camera():
         else:
             self.stats_function = None
 
+    def setup_loopback_camera(self):
+        # Check to see if a loopback camera already exists: # v4l2-ctl --list-devices (parse result
+        # subprocess.call(['sudo', 'ls']) sudo modprobe v4l2loopback
+        # call in separate thread: ffmpeg -f video4linux2 -input_format mjpeg -s 640x480 -i /dev/video1 -vcodec rawvideo -pix_fmt gray -threads 0 -f v4l2 /dev/video2
+        pass
+
     def __enter__(self):
         print '__enter__()'
         return self
@@ -94,6 +99,7 @@ if __name__ == "__main__":
         'gray_scale':False,
         'stats_function': lambda:print_unless_none(fps.next())
     }
+
     with Camera(**camera_config) as cam:
         while True:
             frame = cam.get_image()
