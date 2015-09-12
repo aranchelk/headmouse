@@ -73,7 +73,6 @@ class Camera(object):
 
         time.sleep(2)
 
-
         self.cap = cap
 
     def __enter__(self):
@@ -99,7 +98,7 @@ class Camera(object):
 
 if __name__ == "__main__":
     camera_config = {
-        'device_id':0,
+        'device_id':1,
         'width':320,
         'height':200,
         'fps':60,
@@ -117,6 +116,7 @@ if __name__ == "__main__":
         try:
             while True:
                 cam.get_image()
+                cam.show_window()
 
                 fps_stat = fps.next()
                 if fps_stat is not None:
