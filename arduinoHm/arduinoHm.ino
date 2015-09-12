@@ -4,12 +4,14 @@ int controlM = 0;
 // Button values are reversed because of pullup resistors
 int pedalUp = 1;
 int pedalDown = 0;
+boolean rightPedalWasDown = false;
 
 void setup() {  
   //Setup mouse buttons
   pinMode(2,INPUT_PULLUP);
   pinMode(3,INPUT_PULLUP);
-  
+  Serial1.setTimeout(10);
+
   //while (!Serial1) {
     //; // wait for serial port to connect. Needed for Leonardo only
   //}
@@ -55,6 +57,16 @@ void loop() {
       }
       
       Mouse.click();   
+    }
+    
+    if(readRightPedal() == pedalDown && rightPedalWasDown == false){
+      Mouse.press();
+      rightPedalWasDown = true;
+    }
+    
+    if(readRightPedal() == pedalUp && rightPedalWasDown == true){
+      Mouse.release();
+      rightPedalWasDown = false;
     }
     
     

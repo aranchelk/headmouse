@@ -53,16 +53,25 @@ class Camera(object):
         self.window_id = str(uuid.uuid4())
         print '__init__()'
 
-        cap = cv2.VideoCapture(kwargs['device_id'])
+        #cap = cv2.VideoCapture(kwargs['device_id'])
+        cap = cv2.VideoCapture(0)
 
-        cap.set(3, kwargs['width'])
-        cap.set(4, kwargs['height'])
-        #cap.set(cv2.cv.CV_CAP_PROP_FPS, 30.0)
+        # cap.set(3, kwargs['width'])
+        # cap.set(4, kwargs['height'])
+        # cap.set(cv2.cv.CV_CAP_PROP_FPS, 30.0)
 
         #cap.set(8, kwargs['format_'])
-        cap.set(cv2.cv.CV_CAP_PROP_FOURCC ,cv2.cv.CV_FOURCC('M', 'J', 'P', 'G'))
+        #cap.set(cv2.cv.CV_CAP_PROP_FOURCC ,cv2.cv.CV_FOURCC('M', 'J', 'P', 'G'))
         #cap.set(cv2.cv.CV_CAP_PROP_FOURCC ,cv2.cv.CV_FOURCC('M', 'P', 'E', 'G'))
-        cap.set(5, 60)
+        #cap.set(5, 60)
+        time.sleep(2)
+
+        cap.set(3, 640)
+        cap.set(4, 480)
+        cap.set(5, 30)
+        cap.set(8, 0)
+
+        time.sleep(2)
 
 
         self.cap = cap
@@ -79,7 +88,7 @@ class Camera(object):
         return_code, image = self.cap.read()
         self.show_window()
         #print self.cap.get(cv2.cv.CV_CAP_PROP_FPS)
-        return image
+        #return image
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         print 'Bye.'

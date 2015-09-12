@@ -71,7 +71,7 @@ def camera(
     ):
     # Sets up camera
 
-    cap = cv2.VideoCapture(camera_id)
+    cap = cv2.VideoCapture(0)#camera_id)
     width, height = resolution
 
     cap.set(3, width)
