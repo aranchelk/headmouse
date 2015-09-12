@@ -7,11 +7,21 @@ import sys
 import logging
 import util
 import serial
+import thread
 import time
 
 logger = logging.getLogger(__name__)
 
 SERIAL_COMMAND_BUFFER_LENGTH = 4
+
+def print_serial(serial_handle):
+    print "got serial handle for read."
+    print serial_handle
+    while True:
+        print serial_handle.readline().rstrip()
+
+def start_async_reader(serial_handle):
+    thread.start_new_thread(print_serial, (serial_handle,))
 
 
 def twos_comp(num):
@@ -51,30 +61,22 @@ def discover_serial_handle(glob_string = '/dev/tty.usb*'):
     import glob
     serial_interfaces = glob.glob(glob_string)
 
-    max_attempts = 3
-    wait_interval = 1 # in seconds
-    version_data = None
+    for port in serial_interfaces:
+        print "Trying port %s" % port
+        baud = 57600
+        timeout = 2
 
-    for i in range(max_attempts):
-        print "Attempt: %s" % i
-        for port in serial_interfaces:
-            print "Trying port %s" % port
-            baud = 57600
-            timeout = 2
-
-            try:
-                sh = serial.Serial(port, baud, timeout=timeout)
-                sh.write('c0')
-                sh.flush()
-                version_data = sh.readline().rstrip()
-            except Exception: #todo: put the specific exception type
-                pass
- 
-            if version_data == unicode("hm0.0.1"):
-                print "Found serial on port:", port
-                return sh
-
-        time.sleep(wait_interval)
+        try:
+            sh = serial.Serial(port, baud, timeout=timeout)
+            sh.write('c0')
+            sh.flush()
+            version_data = sh.readline().rstrip()
+        except Exception:
+            continue
+    
+        if version_data == unicode("hm0.0.1"):
+            print "Found serial on port:", port
+            return sh
 
     sys.exit("Could not find serial port for Arduino headmouse.")
 
@@ -85,6 +87,7 @@ if __name__ == '__main__':
     mouse = move_mouse_gen(sh)
 
     set_mouse_max_move(sh, 50)
+    start_async_reader(sh)
 
     while True:
         try:
