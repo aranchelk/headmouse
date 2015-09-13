@@ -3,6 +3,7 @@
 import logging
 logger = logging.getLogger(__name__)
 import collections
+import time
 
 def prep_gen(func):
     '''
@@ -22,15 +23,19 @@ def prep_gen(func):
 
 
 class Every_n:
-    def __init__(self, frequency, inner_function):
+    def __init__(self, frequency, inner_function, send_skip_count=False):
         if frequency < 1:
             raise ValueError("Frequencies < 1 don't have meaning in every_n, read as every 1st time, every 2nd time...")
 
         self.inner_function = inner_function
         self.frequency = frequency
         self.counter = 0
+        self.send_skip_count = send_skip_count
 
     def send(self, *args, **kwargs):
+        if self.send_skip_count:
+            kwargs['skip_count'] = self.frequency
+
         if self.counter + 1 >= self.frequency:
             self.counter = 0
             return self.inner_function(*args, **kwargs)
@@ -40,6 +45,42 @@ class Every_n:
 
     def next(self):
         return self.send()
+
+
+def simple_fps():
+    last_time = float(time.time())
+    fps = None
+    frames = 1
+
+    while True:
+        current_time = float(time.time())
+        yield 1.0 / (current_time - last_time)
+        last_time = current_time
+
+
+
+# def calculate_fps(calc_interval):
+#     last_time = float(time.time())
+#     fps = None
+#     frames = 0
+#
+#     while True:
+#         frames = yield fps
+#         frames += 1
+#         current_time = float(time.time())
+#         interval = current_time - last_time
+#
+#         if (interval > calc_interval):
+#
+#             #calculate fps
+#             fps = frames / interval
+#
+#             #reset start values
+#             last_time = current_time
+#             frames = 0
+#
+#         else:
+#             fps = None
 
 
 class Stats(collections.defaultdict):

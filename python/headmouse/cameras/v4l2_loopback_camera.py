@@ -11,48 +11,6 @@ import subprocess
 import shlex
 
 
-def simple_fps(calc_interval):
-    last_time = float(time.time())
-    fps = None
-    frames = 0
-
-    while True:
-        yield fps
-        frames += 1
-        current_time = float(time.time())
-        interval = current_time - last_time
-
-        if (interval > calc_interval):
-
-            #calculate fps
-            fps = frames / interval
-
-            #reset start values
-            last_time = current_time
-            frames = 0
-
-        else:
-            fps = None
-
-
-def print_unless_none(value):
-    if value is not None:
-        print value
-
-# Todo: this should move to a utility function module
-def every_n(freq, func):
-    counter = 0
-
-    while True:
-        if counter >= freq:
-            yield func()
-            counter = 0
-        else:
-            yield None
-
-        counter += 1
-
-
 class Camera():
     def __init__(self, **kwargs):
         # Todo: Add a function to decide whether or not image is displayed
@@ -63,14 +21,9 @@ class Camera():
         self.window_id = str('frame')
         print '__init__()'
         self.cap = cv2.VideoCapture(self.conf['device_id'])
-        self.display = self.conf['display'] if 'display' in self.conf else False
         self.gray_scale = self.conf['gray_scale'] if 'gray_scale' in self.conf else True
         self.frame = None
 
-        if 'stats_function' in self.conf:
-            self.stats_function = self.conf['stats_function']
-        else:
-            self.stats_function = None
 
     def setup_loopback_camera(self, width, height, is_gray_scale):
         # Check to see if a loopback camera already exists: # v4l2-ctl --list-devices (parse result
@@ -91,18 +44,14 @@ class Camera():
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        print 'Bye.'
+        print 'Camera cleaning up...'
         self.cap.release()
         cv2.destroyWindow(self.window_id)
         # Todo: add a function to destroy loopback camera
 
     def get_image(self):
-        #self.display = not self.display
         ret, frame = self.cap.read()
         self.frame = frame
-
-        if self.stats_function:
-            self.stats_function()
 
         if cv2.waitKey(1) & 0xFF == ord('q'):
             raise Exception('Quit issued from cv2 process')
@@ -116,17 +65,25 @@ class Camera():
 
 
 if __name__ == "__main__":
+    def every_n(freq, func):
+        counter = 0
 
-    fps = simple_fps(1)
+        while True:
+            if counter >= freq:
+                yield func()
+                counter = 0
+            else:
+                yield None
+
+            counter += 1
+
 
     camera_config = {
         'device_id':2,
         'width':640,
         'height':480,
         'format_':1,
-        'display':True,
-        'gray_scale':False,
-        'stats_function': lambda:print_unless_none(fps.next())
+        'gray_scale':False
     }
 
     try:
