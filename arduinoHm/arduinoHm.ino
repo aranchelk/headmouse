@@ -4,6 +4,7 @@ int controlM = 0;
 // Button values are reversed because of pullup resistors
 int pedalUp = 1;
 int pedalDown = 0;
+boolean leftPedalWasDown = false;
 boolean rightPedalWasDown = false;
 
 void setup() {  
@@ -11,6 +12,7 @@ void setup() {
   pinMode(2,INPUT_PULLUP);
   pinMode(3,INPUT_PULLUP);
   Serial1.setTimeout(10);
+  Serial.setTimeout(10);
 
   //while (!Serial1) {
     //; // wait for serial port to connect. Needed for Leonardo only
@@ -19,6 +21,7 @@ void setup() {
   
   //Serial1.setTimeout(1);
   Serial1.begin(57600);
+  Serial.begin(57600);
   Mouse.begin();
 
   for(int i = 0; i<500; i++){
@@ -40,7 +43,7 @@ void loop() {
 
   // Get initial value
   while(true) {
-    while (xCarryOver != 0 || yCarryOver !=0) {
+    while (xCarryOver != 0 || yCarryOver !=0){
       int x = absMax(xCarryOver, maxMove);
       int y = absMax(yCarryOver, maxMove);
       
@@ -50,25 +53,53 @@ void loop() {
       yCarryOver -= y;
     }
     
-    //Temporary pedal logic
-    if(readLeftPedal() == pedalDown){
-      while (readLeftPedal() == pedalDown){
-        delay(10);
+    // Todo: turn left and right click logic into a single reusable function that takes previous state and pedal read function pointer
+    if(!leftPedalWasDown){
+      if(readLeftPedal() == pedalDown){
+        delay(250);
+      
+        if(readLeftPedal() == pedalUp){
+          logger("Left button click.");
+          // A quick release is interpreted as a click
+          Mouse.click();
+        } else {
+          logger("Left button hold.");
+          Mouse.press();
+          leftPedalWasDown = true;
+        }  
       }
       
-      Mouse.click();   
+    } else {
+      if(readLeftPedal() == pedalUp) {
+        logger("Left button release");
+        Mouse.release();
+        leftPedalWasDown = false;
+      }
     }
     
-    if(readRightPedal() == pedalDown && rightPedalWasDown == false){
-      Mouse.press();
-      rightPedalWasDown = true;
+    if(!rightPedalWasDown){
+      if(readRightPedal() == pedalDown){
+        delay(300);
+      
+        if(readRightPedal() == pedalUp){
+          logger("Right button click.");
+          // A quick release is interpreted as a click
+          Mouse.click(MOUSE_RIGHT);
+        } else {
+          logger("Right button hold.");
+          Mouse.press(MOUSE_RIGHT);
+          rightPedalWasDown = true;
+        }  
+      }
+      
+    } else {
+      if(readRightPedal() == pedalUp) {
+        logger("Rigth button release.");
+        Mouse.release(MOUSE_RIGHT);
+        rightPedalWasDown = false;
+      }
     }
-    
-    if(readRightPedal() == pedalUp && rightPedalWasDown == true){
-      Mouse.release();
-      rightPedalWasDown = false;
-    }
-    
+   
     
     if (Serial1.find("c")) {
       // We've received the start of a control code
@@ -77,7 +108,7 @@ void loop() {
       switch (ctrlCode) {
         case 0:
           // Request for device info
-          Serial1.println("hm0.0.1");
+         Serial1.println("hm0.0.1");
           break;
         case 1:
           // Received code to move mouse
@@ -101,6 +132,12 @@ void loop() {
         //Serial1.println("No command received.");
     }        
   }
+}
+
+void logger(String message) {
+  Serial.println(message);
+  
+  
 }
 
 int readLeftPedal() {
