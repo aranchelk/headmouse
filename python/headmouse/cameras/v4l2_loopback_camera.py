@@ -5,9 +5,11 @@
 import cv2
 import time
 import uuid
+# Todo: frame id should come from uuid
 import os
 import subprocess
 import shlex
+
 
 def simple_fps(calc_interval):
     last_time = float(time.time())
@@ -37,6 +39,7 @@ def print_unless_none(value):
     if value is not None:
         print value
 
+# Todo: this should move to a utility function module
 def every_n(freq, func):
     counter = 0
 
