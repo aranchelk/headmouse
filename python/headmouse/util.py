@@ -21,6 +21,27 @@ def prep_gen(func):
     return wrapper
 
 
+class Every_n:
+    def __init__(self, frequency, inner_function):
+        if frequency < 1:
+            raise ValueError("Frequencies < 1 don't have meaning in every_n, read as every 1st time, every 2nd time...")
+
+        self.inner_function = inner_function
+        self.frequency = frequency
+        self.counter = 0
+
+    def send(self, *args, **kwargs):
+        if self.counter + 1 >= self.frequency:
+            self.counter = 0
+            return self.inner_function(*args, **kwargs)
+        else:
+            self.counter += 1
+            return None
+
+    def next(self):
+        return self.send()
+
+
 class Stats(collections.defaultdict):
     '''
     Collect stats to be logged only every *n* frames
