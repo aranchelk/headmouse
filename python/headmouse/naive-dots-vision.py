@@ -42,21 +42,10 @@ class Dot_points:
                 self.x_range = max(self.x_list) - min(self.x_list)
 
 
-def dot_tracker(camera_frame):
-    # TODO: real distance, or measured fixed distance value
-    detector = cv2.ORB()
 
-    x, y = None, None
-    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-    ret, thresh3 = cv2.threshold(gray,200,255,cv2.THRESH_BINARY)
 
-    kp = detector.detect(thresh3)
-    dp = Dot_points(kp)
-
-    return dp.cursor_position()
 
 def display(faces=None, objects=None, kp=None, coords=(None, None), boxes=None, img=None):
-
     if coords:
         x, y, distance = coords
     if img is not None:
@@ -77,10 +66,53 @@ def display(faces=None, objects=None, kp=None, coords=(None, None), boxes=None, 
     cv2.imshow('frame', cv2.flip(img, flipCode=1))
 
 
+class Vision:
+    def __init__(self, camera):
+        self.camera = camera
+        self.frame = None
+        self.x = None
+        self.y = None
+        self.z = None
+
+    def __enter__(self):
+        self.camera.__enter__()
+        return self
+
+    def __exit__(self, *args):
+        self.camera.__exit__(*args)
+
+    def get_image(self):
+        self.frame = self.camera.get_image()
+        return self.frame
+
+    def display_image(self):
+        #cv2.imshow('frame', cv2.flip(self.frame,flipCode=1))
+        display(img=self.frame, kp=self.kp, coords=(self.x, self.y, self.z))
+        pass
+
+    def process(self):
+        if self.frame is not None:
+            # TODO: real distance, or measured fixed distance value
+            detector = cv2.ORB()
+
+            x, y = None, None
+            gray = cv2.cvtColor(self.frame, cv2.COLOR_BGR2GRAY)
+            ret, thresh3 = cv2.threshold(gray,253,255,cv2.THRESH_BINARY)
+
+            self.kp = detector.detect(thresh3)
+            dp = Dot_points(self.kp)
+
+            self.x, self.y, self.z = dp.cursor_position()
+
+            return self.x, self.y, self.z
+
+
 if __name__ == "__main__":
 
-    fps = camera.simple_fps(1)
-    print_coords = util.Every_n(90, lambda x: print(dot_tracker(x)))
+    f = 180.0
+
+    fps = util.simple_fps()
+    print_fps = util.Every_n(f, lambda: print("fps: " + str( fps.next() * f)))
 
     camera_config = {
         'device_id':2,
@@ -88,19 +120,20 @@ if __name__ == "__main__":
         'height':480,
         'format_':1,
         'display':True,
-        'gray_scale':False,
-        'stats_function': lambda:camera.print_unless_none(fps.next())
+        'gray_scale':False
     }
 
     try:
-        with camera.Camera(**camera_config) as cam:
+        with Vision(camera.Camera(**camera_config)) as cam:
             display_frame = util.Every_n(3, cam.display_image)
 
             while True:
-                frame = cam.get_image()
-                display_frame.next()
+                cam.get_image()
+                cam.process()
 
-                print_coords.send(frame)
+                display_frame.next()
+                print_fps.next()
+
 
     except KeyboardInterrupt:
-        print("bye")
+        print("Program exiting.")
