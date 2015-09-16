@@ -3,13 +3,13 @@
 from __future__ import print_function
 import cv2
 import util
-from cameras import v4l2_loopback_camera as camera
 
 
 def midrange(numList):
     return (max(numList) + min(numList))/2
 
-class Dot_points:
+
+class DotPoints:
     # Given a list of keypoints returned by opencv feature detect algo, present usable data
     def cursor_position(self):
         if len(self.kp) > 0:
@@ -67,7 +67,8 @@ def display(faces=None, objects=None, kp=None, coords=(None, None), boxes=None, 
 
 
 class Vision:
-    def __init__(self, camera):
+    def __init__(self, camera, config):
+        self.config = config
         self.camera = camera
         self.frame = None
         self.x = None
@@ -97,10 +98,11 @@ class Vision:
 
             x, y = None, None
             gray = cv2.cvtColor(self.frame, cv2.COLOR_BGR2GRAY)
-            ret, thresh3 = cv2.threshold(gray,253,255,cv2.THRESH_BINARY)
+            print(self.config['dot_threshold'])
+            ret, thresh3 = cv2.threshold(gray,self.config['dot_threshold'],255,cv2.THRESH_BINARY)
 
             self.kp = detector.detect(thresh3)
-            dp = Dot_points(self.kp)
+            dp = DotPoints(self.kp)
 
             self.x, self.y, self.z = dp.cursor_position()
 
@@ -108,6 +110,7 @@ class Vision:
 
 
 if __name__ == "__main__":
+    from cameras import v4l2_loopback_camera as camera
 
     f = 180.0
 
@@ -124,7 +127,7 @@ if __name__ == "__main__":
     }
 
     try:
-        with Vision(camera.Camera(**camera_config)) as cam:
+        with Vision(camera.Camera(camera_config), camera_config) as cam:
             display_frame = util.Every_n(3, cam.display_image)
 
             while True:
