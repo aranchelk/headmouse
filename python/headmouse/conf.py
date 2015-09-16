@@ -28,7 +28,7 @@ base_config = {
         'input_slow_search_delay': 2.0,
 
         'input_camera_name': 0,
-        'input_camera_resolution': (640, 480),
+        # Todo: change wxh to this format 'input_camera_resolution': (1280, 720),
         'input_camera_fps': 30,
 
         'acceleration': 2.3,
