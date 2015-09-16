@@ -98,7 +98,7 @@ class Vision:
 
             x, y = None, None
             gray = cv2.cvtColor(self.frame, cv2.COLOR_BGR2GRAY)
-            print(self.config['dot_threshold'])
+            #print(self.config['dot_threshold'])
             ret, thresh3 = cv2.threshold(gray,self.config['dot_threshold'],255,cv2.THRESH_BINARY)
 
             self.kp = detector.detect(thresh3)
