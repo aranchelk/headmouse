@@ -2,7 +2,7 @@
 
 from __future__ import print_function
 import sys
-import gui
+import gui_menu
 from multiprocessing import Process, Pipe
 import util
 from naive_dots_vision import Vision
@@ -10,7 +10,7 @@ from cameras import v4l2_loopback_camera as camera
 
 
 def f(conn):
-    gui.intialize(conn)
+    gui_menu.intialize(conn)
 
 
 if __name__ == '__main__':
