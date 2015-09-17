@@ -61,7 +61,7 @@ def display(faces=None, objects=None, kp=None, coords=(None, None), boxes=None, 
         if kp:
             img = cv2.drawKeypoints(img,kp,color=(0,255,0), flags=0)
         if x is not None and y is not None:
-            cv2.circle(img, (int(x), int(y)), int(40/distance), (255, 255, 255), 3)
+            cv2.circle(img, (int(x), int(y)), int(40/distance), (255, 0, 0), 3)
 
     cv2.imshow('frame', cv2.flip(img, flipCode=1))
 
