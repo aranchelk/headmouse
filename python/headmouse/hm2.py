@@ -10,7 +10,7 @@ from cameras import v4l2_loopback_camera as camera
 
 
 def f(conn):
-    gui_menu.intialize(conn)
+    gui_menu.initialize(conn)
 
 
 if __name__ == '__main__':
@@ -37,11 +37,9 @@ if __name__ == '__main__':
         display_frame = util.Every_n(3, cam.display_image)
 
         while True:
-            #print('hm2', camera_config['dot_threshold'])
             try:
                 if parent_conn.poll(.001):
                     camera_config.update(parent_conn.recv())
-                    #print("from gui:", camera_config['dot_threshold'])
                 else:
                     if not p.is_alive():
                         sys.exit("GUI component has terminated.")
@@ -54,7 +52,6 @@ if __name__ == '__main__':
 
 
             except KeyboardInterrupt:
-                print("Program interrupted (drunk)")
                 p.terminate()
                 #p.join()
                 sys.exit()
