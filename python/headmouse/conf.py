@@ -1,18 +1,17 @@
+#!/usr/bin/env python
+from __future__ import print_function
 import os
 import ConfigParser
-
 
 USER_CONFIG_FILE = os.path.expanduser("~/.headmouse")
 TEMP_FILE = os.path.expanduser("~/.headmouse.scratch")
 config_parser = ConfigParser.SafeConfigParser()
 current_config = None
 
-
-
 base_config = {
         'output': 'arduino_output',
         'arduino_baud': 115200,
-        #'arduino_port': '/dev/tty.usbmodemfa13131',
+        # 'arduino_port': '/dev/tty.usbmodemfa13131',
         'device_id':2,
 
         'width':640,
@@ -21,8 +20,11 @@ base_config = {
         'display':True,
         'gray_scale':False,
 
-        'input': 'camera',
-        'input_tracker': 'dot_tracker',
+        'algorithm':'naive_dots_vision',
+        'camera':'v4l2_looback_camera',
+
+        'input':'camera',
+        'input_tracker':'dot_tracker',
         'input_visualize': True,
         'input_realtime_search_timeout': 2.0,
         'input_slow_search_delay': 2.0,
@@ -41,9 +43,12 @@ base_config = {
 
         'verbosity': 0,
         }
+option_menu_data = {
+    'algorithm': ['naive_dots_vision', 'eye_haar_vision'],
+    'camera': ['v4l2_looback_camera', 'simple_camera']
+}
 
 scale_data = {
-    # Todo: Add default value as 4th param
     # tuple(min, max, grad)
     'acceleration': (0, 3, .1),
     'sensitivity': (0, 2, .1),
@@ -59,21 +64,23 @@ def config_from_file(config_file):
         return dict(config_parser.items('headmouse'))
     except:
         # Todo: don't except any exception
+        config_parser.add_section('headmouse')
         return {}
 
 
 def render_config():
     # Applies default base config to user_config_file
     full_conf = base_config.copy()
-    # Todo: wrap in try block, their may not be a user file
     full_conf.update(config_from_file(USER_CONFIG_FILE))
+
+    # Cast values from config parser to match default as parser always returns dict of strings
+    for k,v in base_config.iteritems():
+        full_conf[k] = type(v)(full_conf[k])
+
     return full_conf
 
 
 def write_to_file(file_name):
-    # Writes current config to scratch file
-    # todo: test has_section and if needed add_section.
-
     for k, v in current_config.iteritems():
         config_parser.set('headmouse', k, str(v))
 
@@ -81,28 +88,16 @@ def write_to_file(file_name):
         config_parser.write(f)
 
 
-def apply_changes():
-    #write_to_file(TEMP_FILE)
-    pass
-
-
 def save_changes():
-    # Writes current config to user config file
-    #write_to_file(USER_CONFIG_FILE)
-    pass
+    write_to_file(USER_CONFIG_FILE)
 
 
-def initialize(from_scratch=False):
+def initialize():
     global current_config
-    # When multiple instances run concurrently, all but first should intiialize from temp file.
-    if not from_scratch:
-        current_config = render_config()
-    else:
-        # Todo: this should be wrapped in some retries.
-        current_config = config_from_file(TEMP_FILE)
+    current_config = render_config()
+
 
 if __name__ == "__main__":
-    initialize(from_scratch=True)
-    print current_config
-    #apply_changes()
+    initialize()
+    print(current_config)
 
