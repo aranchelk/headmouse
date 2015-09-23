@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-
 from __future__ import print_function
 
 from Tkinter import *
@@ -10,22 +9,39 @@ import sys
 import threading
 import time
 
+# Todo: set up a thread to watch for ctrl+c and exit promptly.
+
 pp = pprint.PrettyPrinter(indent=4)
 conn = None
 
 root=Tk()
 conf.initialize()
-#pp.pprint(conf.current_config)
+status_message=StringVar()
 
 
-def stopProg(e):
+def set_status_message(message):
+    status_message.set(time.strftime("%H:%M:%S") + ": %s" % message)
+
+
+def stop_program(*args):
     root.destroy()
+
+
+def restart_program(*args):
+    python = sys.executable
+    os.execl(python, python, * sys.argv)
+
+
+def save_config(*args):
+    set_status_message("config saved.")
+    conf.save_changes()
 
 
 def set_conf_parameter(name, value):
     conf.current_config[name] = value
     #conf.apply_changes()
     send_config()
+    set_status_message("Set %s to %s" %(name, str(value)))
 
 
 def add_slider(root, name=None, scale_data=None, initial=None):
@@ -37,13 +53,24 @@ def add_slider(root, name=None, scale_data=None, initial=None):
 
 def config_root(root):
     # Todo: make button definition declarative
-    quit_button=Button(root, text="Quit")
-    quit_button.pack(side=LEFT)
-    quit_button.bind('<Button-1>',stopProg)
+    status = Label(root, textvariable=status_message, bd=1, relief=SUNKEN, anchor=W)
+    status.pack(side=BOTTOM, fill=X)
 
-    save_button=Button(root, text="Save")
+    separator = Frame(root, bd=1, relief=SUNKEN)
+    separator.pack(side=BOTTOM)
+
+    quit_button=Button(separator, text="Quit")
+    quit_button.pack(side=LEFT)
+    quit_button.bind('<Button-1>', stop_program)
+
+    reset_button=Button(separator, text="Restart")
+    reset_button.pack(side=LEFT)
+    reset_button.bind('<Button-1>', restart_program)
+
+    save_button=Button(separator, text="Save")
     save_button.pack(side=LEFT)
-    save_button.bind('<Button-1>',lambda x: conf.save_changes())
+    save_button.bind('<Button-1>', save_config)
+
 
     w = 1000 # width for the Tk root
     h = 200 # height for the Tk root
@@ -108,12 +135,16 @@ def initialize(io_pipe=None):
     # Setup empty tkinter window
     config_root(root)
 
+    slider_frame = Frame(root, relief=SUNKEN, bd=1)
+    slider_frame.pack(side=LEFT)
     # Create sliders for numerical parameters from conf
     for name, scale in conf.scale_data.iteritems():
-        add_slider(root, **{'name':name, 'scale_data':scale, 'initial':conf.current_config[name]})
+        add_slider(slider_frame, **{'name':name, 'scale_data':scale, 'initial':conf.current_config[name]})
 
+    menu_frame = Frame(root, relief=SUNKEN, bd=1)
+    menu_frame.pack(side=LEFT)
     for name, options in conf.option_menu_data.iteritems():
-        add_option_menu(root, name=name, options=options, initial=conf.current_config[name])
+        add_option_menu(menu_frame, name=name, options=options, initial=conf.current_config[name])
 
 
     root.mainloop()
