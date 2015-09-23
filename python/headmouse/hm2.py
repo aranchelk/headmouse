@@ -24,7 +24,7 @@ if __name__ == '__main__':
     p.start()
 
     def restart():
-        p.terminate()htn
+        p.terminate()
         python = sys.executable
         os.execl(python, python, * sys.argv)
 
@@ -58,6 +58,7 @@ if __name__ == '__main__':
                         control_message = pipe_data['control']
 
                         if control_message == 'restart':
+                            print('restart')
                             restart()
                         else:
                             print(control_message)
