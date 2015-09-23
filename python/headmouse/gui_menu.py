@@ -28,12 +28,12 @@ def stop_program(*args):
 
 
 def restart_program(*args):
-    python = sys.executable
-    os.execl(python, python, * sys.argv)
+    if conn is not None:
+        conn.send({'control': 'restart'})
 
 
 def save_config(*args):
-    set_status_message("config saved.")
+    set_status_message("Config saved.")
     conf.save_changes()
 
 
@@ -92,7 +92,7 @@ def config_root(root):
 
 def send_config():
     if conn is not None:
-        conn.send(conf.current_config)
+        conn.send({'config':conf.current_config})
 
 
 def check_parent_process():
@@ -150,6 +150,9 @@ def initialize(io_pipe=None):
     root.mainloop()
 
 if __name__ == '__main__':
+    def restart_program(*args):
+        python = sys.executable
+        os.execl(python, python, * sys.argv)
     initialize()
 
 

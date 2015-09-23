@@ -12,17 +12,22 @@ import shlex
 
 
 class Camera():
-    def __init__(self, passed_config):
+    def __init__(self, **kwargs):
         # Todo: Add a function to decide whether or not image is displayed
         # Todo: if gray_scale is true, setup loopback camera ffmpeg stream in black and white
-        self.conf = passed_config
+        self.conf = kwargs
+        print('from camera')
+        print(self.conf)
+
+
         self.setup_loopback_camera(self.conf['width'], self.conf['height'], self.conf['gray_scale'])
 
         self.window_id = str('frame')
         print '__init__()'
-        self.cap = cv2.VideoCapture(self.conf['device_id'])
+        self.cap = cv2.VideoCapture(2)
         self.gray_scale = self.conf['gray_scale'] if 'gray_scale' in self.conf else True
         self.frame = None
+
 
     def setup_loopback_camera(self, width, height, is_gray_scale):
         # Check to see if a loopback camera already exists: # v4l2-ctl --list-devices (parse result
@@ -62,6 +67,12 @@ class Camera():
             # More intuitive for user to see a mirror image.
             cv2.imshow('frame', cv2.flip(self.frame,flipCode=1))
 
+    def get_camera_id(self):
+        return 2
+
+    def process(self):
+        # Not implemented
+        pass
 
 if __name__ == "__main__":
     def every_n(freq, func):
@@ -78,7 +89,7 @@ if __name__ == "__main__":
 
 
     camera_config = {
-        'device_id':2,
+        'device_id':1,
         'width':640,
         'height':480,
         'format_':1,

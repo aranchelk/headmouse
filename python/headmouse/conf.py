@@ -14,9 +14,9 @@ base_config = {
         # 'arduino_port': '/dev/tty.usbmodemfa13131',
         'device_id':2,
 
-        'width':640,
-        'height':480,
-        'format_':1,
+        'width': 640,
+        'height': 480,
+        'format_': 1,
         'display':True,
         'gray_scale':False,
 
