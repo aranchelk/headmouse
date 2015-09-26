@@ -118,24 +118,30 @@ if __name__ == "__main__":
     print_fps = util.Every_n(f, lambda: print("fps: " + str( fps.next() * f)))
 
     camera_config = {
-        'device_id':2,
+        'device_id':1,
         'width':640,
         'height':480,
         'format_':1,
         'display':True,
-        'gray_scale':False
+        'gray_scale':False,
+        'dot_threshold': 240
     }
 
     try:
-        with Vision(camera.Camera(camera_config), camera_config) as cam:
-            display_frame = util.Every_n(3, cam.display_image)
+        with camera.Camera(**camera_config) as cam:
+            vision_config = camera_config.copy()
+            vision_config['device_id']=cam.get_camera_id()
+            print(vision_config)
 
-            while True:
-                cam.get_image()
-                cam.process()
+            with Vision(cam, vision_config) as viz:
+                display_frame = util.Every_n(3, viz.display_image)
 
-                display_frame.next()
-                print_fps.next()
+                while True:
+                    viz.get_image()
+                    viz.process()
+
+                    display_frame.next()
+                    print_fps.next()
 
 
     except KeyboardInterrupt:
