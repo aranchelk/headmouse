@@ -16,6 +16,7 @@ current_config = conf.render()
 def f(conn):
     gui_menu.initialize(conn)
 
+
 def restart():
     python = sys.executable
     os.execl(python, python, * sys.argv)
@@ -34,15 +35,6 @@ if __name__ == '__main__':
     fps = util.simple_fps()
     f = 180.0
     print_fps = util.Every_n(f, lambda: print("fps: " + str( fps.next() * f)))
-
-    # camera_config = {
-    #     'device_id':2,
-    #     'width':640,
-    #     'height':480,
-    #     'format_':1,
-    #     'display':True,
-    #     'gray_scale':False
-    # }
 
     conf_from_gui = parent_conn.recv()['config']
     print(conf_from_gui)
