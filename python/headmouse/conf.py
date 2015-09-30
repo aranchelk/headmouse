@@ -9,13 +9,14 @@ config_parser = ConfigParser.SafeConfigParser()
 
 
 class ObservableDict(dict):
+    # Extending Python dict with callbacks
     def __init__(self, *args, **kwargs):
         self.callbacks = {}
         super(ObservableDict, self).__init__(*args, **kwargs)
 
     def __setitem__(self, key, value):
         # We don't set the same key to the value twice to avoid triggering callbacks unnecessarily
-        if self[key] != value:
+        if self.__getitem__(key) != value:
             if key in self.callbacks:
                 for f in self.callbacks[key]:
                     f(key, value)
@@ -65,12 +66,14 @@ template_config = {
         'distance_scaling': True,
         'dot_threshold': 245,
         'camera_gain': 0,
+        'camera_brightness': 0,
 
         'verbosity': 0,
         }
 
 # Template config Metadata, currently used for settings GUI rendering, could also be used for validation.
 option_menu_data = {
+    # List of valid options
     'algorithm': ['naive_dots_vision', 'eye_haar_vision'],
     'camera': ['v4l2_looback_camera', 'simple_camera']
 }
@@ -81,7 +84,8 @@ scale_data = {
     'sensitivity': (0, 2, .1),
     'smoothing': (0, 1, .05),
     'dot_threshold': (200, 254, 1),
-    'camera_gain': (0, 50, 5),
+    'camera_gain': (0, 100, 5),
+    'camera_brightness': (-100, 100, 5),
 }
 
 
@@ -91,9 +95,11 @@ def from_file(file_path, template):
         conf = dict(config_parser.items('headmouse'))
 
         if template is not None:
-            # Cast values from config parser to match default as parser always returns dict of strings
+            # Cast values from config parser to match template_config types
+            # Parser always returns dict of strings, or requires procedural casting
             for k,v in template.iteritems():
-                conf[k] = type(v)(conf[k])
+                if k in conf:
+                    conf[k] = type(v)(conf[k])
         return conf
 
     except ConfigParser.NoSectionError:
@@ -102,7 +108,7 @@ def from_file(file_path, template):
         return {}
 
 
-def render_config():
+def render():
     # Apply default base config to user_config_file
     full_conf = template_config.copy()
     full_conf.update(from_file(USER_CONFIG_FILE, full_conf))
@@ -118,11 +124,12 @@ def save(conf, path=USER_CONFIG_FILE):
 
 
 if __name__ == "__main__":
-    c = render_config()
+    c = render()
     print(c)
     c.register_callback('smoothing', lambda x, y: print(x, y))
     c['smoothing'] = .2
     c['smoothing'] = .2
+    c.update_all(template_config)
 
     #save(c)
 
