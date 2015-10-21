@@ -11,10 +11,16 @@ from vision.naive_dots import Vision
 from cameras import v4l2_loopback_camera as camera
 
 current_config = conf.render()
+output_driver = None
+
+# Todo: replace this with a generic method for all drivers
+# Todo: consider renaming vision and camera dirs with _drivers
+def set_output_driver(driver_name):
+    global output_driver
+    output_driver = __import__('output_drivers.' + driver_name).__dict__[driver_name]
+    #print(dir(output_driver))
 
 # Todo:
-# Need a dymanic module importer function
-# Need a dict of pointers to the dynamically imported functions
 # To this add lambdas to output, camera, and algorithm to dynamically load the modules
 # Add "Save and restart" button to GUI
 # Move algorithms to subdir
@@ -42,9 +48,14 @@ if __name__ == '__main__':
     conf_from_gui = parent_conn.recv()['config']
     current_config.update_all(conf_from_gui)
 
+    current_config.register_callback('output', lambda k, v: set_output_driver(v))
+    set_output_driver(current_config['output'])
+
     with camera.Camera(current_config) as cam:
         with Vision(cam, current_config) as viz:
             display_frame = util.Every_n(3, viz.display_image)
+
+            # Todo: when conf run all registered_callbacks method is in place, run it here.
 
             while True:
                 try:
@@ -67,7 +78,10 @@ if __name__ == '__main__':
                             sys.exit("GUI component has terminated.")
 
                     viz.get_image()
-                    viz.process()
+                    x, y, z = viz.process()
+
+                    # Todo: Important! calculate deltas here.
+                    output_driver.send_xy(x, y)
 
                     display_frame.next()
                     send_fps.next()
