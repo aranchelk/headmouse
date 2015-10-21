@@ -3,16 +3,21 @@
 '''
 Write to stdin to serial
 '''
-import sys
+import sys, os
+sys.path.append(os.path.dirname(os.path.realpath(__file__)) + "/..")
+
 import logging
-sys.path.append("../")
-import util
 import serial
 import time
+
+import util
 
 logger = logging.getLogger(__name__)
 
 SERIAL_COMMAND_BUFFER_LENGTH = 4
+
+def send_xy(x,y):
+    print "Arduino serial: this is just a stub."
 
 
 def twos_comp(num):

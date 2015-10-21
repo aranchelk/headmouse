@@ -34,6 +34,8 @@ class ObservableDict(dict):
         else:
             self.callbacks[conf_key] = [function]
 
+    # Todo: add method to run all callbacks
+
     def update_all(self, new_val_dict):
         for k, v in new_val_dict.iteritems():
             self[k] = new_val_dict[k]

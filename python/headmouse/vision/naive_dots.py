@@ -1,8 +1,10 @@
 #!/usr/bin/env python
 
 from __future__ import print_function
-import sys
-sys.path.append("../")
+
+import sys, os
+sys.path.append(os.path.dirname(os.path.realpath(__file__)) + "/..")
+
 import cv2
 import util
 
