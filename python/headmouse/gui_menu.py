@@ -17,6 +17,11 @@ conn = None
 root=Tk()
 current_config = conf.render()
 
+fps_status = StringVar()
+fps_status.set("fps: ...")
+
+temp_fp = 1
+
 status_message=StringVar()
 
 
@@ -54,6 +59,9 @@ def add_slider(root, name=None, scale_data=None, initial=None):
 
 def config_root(root):
     # Todo: make button definition declarative
+    label_title = Label(root, text="Headmouse",  fg="black", font="Helvetica 16 bold")
+    label_title.pack()
+
     status = Label(root, textvariable=status_message, bd=1, relief=SUNKEN, anchor=W)
     status.pack(side=BOTTOM, fill=X)
 
@@ -72,20 +80,33 @@ def config_root(root):
     save_button.pack(side=LEFT)
     save_button.bind('<Button-1>', save_config)
 
+    label_fps = Label(root, textvariable=fps_status)
+    label_fps.pack(side=BOTTOM)
 
-    w = 1200 # width for the Tk root
-    h = 200 # height for the Tk root
+    def update_status_info():
+        if conn is not None:
+            if conn.poll(.001):
+                pipe_data = conn.recv()
+                fps_status.set("fps: " + str(pipe_data))
+        label_fps.after(100, update_status_info)
+
+    update_status_info()
+
+
+
+    #w = 1200 # width for the Tk root
+    #h = 200 # height for the Tk root
 
     # get screen width and height
-    ws = root.winfo_screenwidth() # width of the screen
-    hs = root.winfo_screenheight() # height of the screen
+    #ws = root.winfo_screenwidth() # width of the screen
+    #hs = root.winfo_screenheight() # height of the screen
 
-    x = (ws/2) - (w/2)
-    y = (hs/2) - (h/2)
+    #x = (ws/2) - (w/2)
+    #y = (hs/2) - (h/2)
 
     # set the dimensions of the screen
     # and where it is placed
-    root.geometry('%dx%d+%d+%d' % (w, h, x, y))
+    #root.geometry('%dx%d+%d+%d' % (w, h, x, y))
 
     root.title("Headmouse")
     root.lift ()
@@ -96,7 +117,6 @@ def send_config():
     c.update(current_config)
     if conn is not None:
         conn.send({'config':c})
-
 
 def check_parent_process():
     # http://stackoverflow.com/questions/28597692/python-multiprocessing-how-do-you-get-the-status-of-the-parent-from-the-child
@@ -153,9 +173,12 @@ def initialize(io_pipe=None):
     root.mainloop()
 
 if __name__ == '__main__':
+    # Overriding remote restart message, with actual restart
     def restart_program(*args):
         python = sys.executable
         os.execl(python, python, * sys.argv)
+
+
     initialize()
 
 

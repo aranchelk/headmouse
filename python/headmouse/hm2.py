@@ -9,8 +9,10 @@ import util
 import conf
 from naive_dots_vision import Vision
 from cameras import v4l2_loopback_camera as camera
+from conf import ObservableDict
 
 current_config = conf.render()
+status_info = ObservableDict({'fps': ''})
 
 
 def f(conn):
@@ -33,14 +35,15 @@ if __name__ == '__main__':
         os.execl(python, python, * sys.argv)
 
     fps = util.simple_fps()
-    f = 180.0
-    print_fps = util.Every_n(f, lambda: print("fps: " + str( fps.next() * f)))
+    freq = 60.0
+    send_fps = util.Every_n(freq, lambda: parent_conn.send(str( float("{0:.2f}".format(fps.next() * freq)))))
+    fps.next()
 
     conf_from_gui = parent_conn.recv()['config']
-    print(conf_from_gui)
+    #print(conf_from_gui)
     current_config.update_all(conf_from_gui)
-    current_config.register_callback('smoothing', lambda x, y: print("lambda print:", x, y))
-    print(current_config.callbacks)
+    #current_config.register_callback('smoothing', lambda x, y: print("lambda print:", x, y))
+    #print(current_config.callbacks)
 
     with camera.Camera(current_config) as cam:
         with Vision(cam, current_config) as viz:
@@ -58,10 +61,11 @@ if __name__ == '__main__':
                             control_message = pipe_data['control']
 
                             if control_message == 'restart':
-                                print('restart')
+                                #print('restart')
                                 restart()
                             else:
-                                print(control_message)
+                                #print(control_message)
+                                pass
                     else:
                         if not p.is_alive():
                             sys.exit("GUI component has terminated.")
@@ -70,7 +74,7 @@ if __name__ == '__main__':
                     viz.process()
 
                     display_frame.next()
-                    print_fps.next()
+                    send_fps.next()
 
 
                 except KeyboardInterrupt:
