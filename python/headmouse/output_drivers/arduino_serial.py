@@ -5,6 +5,7 @@ Write to stdin to serial
 '''
 import sys
 import logging
+sys.path.append("../")
 import util
 import serial
 import time

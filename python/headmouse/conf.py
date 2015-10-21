@@ -2,10 +2,15 @@
 from __future__ import print_function
 import os
 import ConfigParser
+import pkgutil
 
 USER_CONFIG_FILE = os.path.expanduser("~/.headmouse")
 TEMP_FILE = os.path.expanduser("~/.headmouse.scratch")
 config_parser = ConfigParser.SafeConfigParser()
+
+
+def get_modules_in_dir(dir_name):
+    return [name for _, name, _ in pkgutil.iter_modules([dir_name])]
 
 
 class ObservableDict(dict):
@@ -75,8 +80,8 @@ template_config = {
 option_menu_data = {
     # List of valid options
     'algorithm': ['naive_dots_vision', 'eye_haar_vision'],
-    'camera': ['v4l2_looback_camera', 'simple_camera'],
-    'output': ['arduino','stdout']
+    'camera': get_modules_in_dir('cameras'),
+    'output': get_modules_in_dir('output_drivers')
 }
 
 scale_data = {
