@@ -124,7 +124,9 @@ if __name__ == "__main__":
         'format_':1,
         'display':True,
         'gray_scale':False,
-        'dot_threshold': 240
+        'dot_threshold': 240,
+        'camera_gain': 0,
+        'camera_brightness': 0
     }
 
     try:

@@ -35,7 +35,7 @@ class ObservableDict(dict):
 
 # Contains default values and establishes types for values parsed from ini files
 template_config = {
-        'output': 'arduino_output',
+        'output': 'arduino',
         'arduino_baud': 115200,
         # 'arduino_port': '/dev/tty.usbmodemfa13131',
         'device_id':2,
@@ -75,7 +75,8 @@ template_config = {
 option_menu_data = {
     # List of valid options
     'algorithm': ['naive_dots_vision', 'eye_haar_vision'],
-    'camera': ['v4l2_looback_camera', 'simple_camera']
+    'camera': ['v4l2_looback_camera', 'simple_camera'],
+    'output': ['arduino','stdout']
 }
 
 scale_data = {

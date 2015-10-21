@@ -47,7 +47,15 @@ def set_mouse_max_move(serial_handle, maxMove):
     serial_handle.write('c2,' + str(maxMove))
 
 
-def discover_serial_handle(glob_string = '/dev/tty.usb*'):
+def discover_serial_handle(glob_string = None):
+    os_globs = {
+        'linux2': '/dev/ttyACM*',
+        'darwin': '/dev/tty.usb*'
+    }
+
+    if glob_string is None:
+        glob_string = os_globs[sys.platform]
+
     import glob
     serial_interfaces = glob.glob(glob_string)
 
