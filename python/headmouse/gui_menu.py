@@ -6,7 +6,6 @@ import conf
 import pprint
 import os
 import sys
-import threading
 import time
 
 # Todo: set up a thread to watch for ctrl+c and exit promptly.
@@ -19,9 +18,6 @@ current_config = conf.render()
 
 fps_status = StringVar()
 fps_status.set("fps: ...")
-
-temp_fp = 1
-
 status_message=StringVar()
 
 
@@ -92,8 +88,11 @@ def config_root(root):
 
     update_status_info()
 
+    root.title("Headmouse")
+    root.lift ()
 
 
+#def set_window_dimensions():
     #w = 1200 # width for the Tk root
     #h = 200 # height for the Tk root
 
@@ -107,9 +106,6 @@ def config_root(root):
     # set the dimensions of the screen
     # and where it is placed
     #root.geometry('%dx%d+%d+%d' % (w, h, x, y))
-
-    root.title("Headmouse")
-    root.lift ()
 
 
 def send_config():

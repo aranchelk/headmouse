@@ -9,19 +9,19 @@ import util
 import conf
 from naive_dots_vision import Vision
 from cameras import v4l2_loopback_camera as camera
-from conf import ObservableDict
 
 current_config = conf.render()
-status_info = ObservableDict({'fps': ''})
+
+# Todo:
+# Need a dymanic module importer function
+# Need a dict of pointers to the dynamically imported functions
+# To this add lambdas to output, camera, and algorithm to dynamically load the modules
+# Add "Save and restart" button to GUI
+# Move algorithms to subdir
 
 
 def f(conn):
     gui_menu.initialize(conn)
-
-
-def restart():
-    python = sys.executable
-    os.execl(python, python, * sys.argv)
 
 
 if __name__ == '__main__':
@@ -40,10 +40,7 @@ if __name__ == '__main__':
     fps.next()
 
     conf_from_gui = parent_conn.recv()['config']
-    #print(conf_from_gui)
     current_config.update_all(conf_from_gui)
-    #current_config.register_callback('smoothing', lambda x, y: print("lambda print:", x, y))
-    #print(current_config.callbacks)
 
     with camera.Camera(current_config) as cam:
         with Vision(cam, current_config) as viz:
@@ -61,7 +58,6 @@ if __name__ == '__main__':
                             control_message = pipe_data['control']
 
                             if control_message == 'restart':
-                                #print('restart')
                                 restart()
                             else:
                                 #print(control_message)
@@ -79,8 +75,4 @@ if __name__ == '__main__':
 
                 except KeyboardInterrupt:
                     p.terminate()
-                    #p.join()
                     sys.exit()
-
-
-
