@@ -79,7 +79,7 @@ template_config = {
 # Template config Metadata, currently used for settings GUI rendering, could also be used for validation.
 option_menu_data = {
     # List of valid options
-    'algorithm': ['naive_dots_vision', 'eye_haar_vision'],
+    'algorithm': get_modules_in_dir('vision'),
     'camera': get_modules_in_dir('cameras'),
     'output': get_modules_in_dir('output_drivers')
 }
