@@ -7,7 +7,7 @@ import gui_menu
 from multiprocessing import Process, Pipe
 import util
 import conf
-from naive_dots_vision import Vision
+from vision.naive_dots import Vision
 from cameras import v4l2_loopback_camera as camera
 
 current_config = conf.render()
