@@ -3,6 +3,7 @@
 import logging
 logger = logging.getLogger(__name__)
 import math
+import numpy
 
 def consumer(func):
     '''
@@ -33,6 +34,26 @@ def relative_movement():
         diff_coords[0] = x - old_coords[0]
         diff_coords[1] = y - old_coords[1]
         old_coords = x, y
+
+
+def mirror(coords):
+    l = list(coords)
+    x = l.pop(0)
+    x *= -1
+
+    return tuple([x]+l)
+
+
+def limiter(coords, max_abs_value):
+    out_list = []
+
+    for c in list(coords):
+        if abs(c) > max_abs_value:
+            c = max_abs_value * numpy.sign(c)
+
+        out_list.append(c)
+
+    return out_list
 
 
 def get_int_and_remainder(num):

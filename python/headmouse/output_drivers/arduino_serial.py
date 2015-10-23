@@ -3,45 +3,24 @@
 '''
 Write to stdin to serial
 '''
-import sys, os
-sys.path.append(os.path.dirname(os.path.realpath(__file__)) + "/..")
+from __future__ import print_function
 
 import logging
 import serial
 import time
 
+import sys, os
+sys.path.append(os.path.dirname(os.path.realpath(__file__)) + "/..")
+
 import util
+import filters
 
 logger = logging.getLogger(__name__)
-
 SERIAL_COMMAND_BUFFER_LENGTH = 4
+serial_handle = None
+mouse = None
+maximum_move = 32000
 
-def send_xy(x,y):
-    print "Arduino serial: this is just a stub."
-
-
-def twos_comp(num):
-    if num < 0:
-        return num + 32767
-    else:
-        return num
-
-
-def ard_num_string(num):
-   return str(twos_comp(num)).zfill(5)
-
-
-def send_mouse_command(x, y, serial_handle):
-    try:
-        #serial_string = "32100" + ard_num_string(x) + ard_num_string(y)
-        serial_handle.write('m' + str(x)+ ',' + str(y) +'\n')
-        # serial_handle.write( + '\r\n')
-        # serial_handle.write(+ '\r\n')
-
-
-    except Exception as e:
-        logging.error("Error writing to serial output")
-#        print e
 
 @util.prep_gen
 def move_mouse_gen(serial_handle):
@@ -70,9 +49,9 @@ def discover_serial_handle(glob_string = None):
     version_data = None
 
     for i in range(max_attempts):
-        print "Attempt: %s" % i
+        print("Attempt: %s" % i)
         for port in serial_interfaces:
-            print "Trying port %s" % port
+            print("Trying port %s" % port)
             baud = 57600
             timeout = 2
 
@@ -83,39 +62,47 @@ def discover_serial_handle(glob_string = None):
                 version_data = sh.readline().rstrip()
             except Exception: #todo: put the specific exception type
                 pass
- 
+
             if version_data == unicode("hm0.0.1"):
-                print "Found serial on port:", port
+                print("Found serial on port:", port)
                 return sh
 
         time.sleep(wait_interval)
 
     sys.exit("Could not find serial port for Arduino headmouse.")
 
+
+def initialize():
+    global serial_handle, mouse
+    serial_handle = discover_serial_handle()
+    mouse = move_mouse_gen(serial_handle)
+    set_mouse_max_move(serial_handle, 50)
+
+
+def send_xy(xy):
+    x, y = xy
+    # Todo: add a normailze ints function into filters or util and use that.
+    x = int(round(float(x)))
+    y = int(round(float(y)))
+
+    xy = filters.limiter((x,y), maximum_move)
+
+    mouse.send(xy)
+
+
 if __name__ == '__main__':
-    maxMag = 32000
-
-    sh = discover_serial_handle()
-    mouse = move_mouse_gen(sh)
-
-    set_mouse_max_move(sh, 50)
+    initialize()
 
     while True:
         try:
             line = sys.stdin.readline()
             formatted = line.rstrip()
+            print(formatted)
             xy_list = formatted.split(', ')
-            x = int(round(float(xy_list[0])))
-            y = int(round(float(xy_list[1])))
 
-            # start temp limiter
-            if abs(x) > maxMag:
-                x = maxMag * abs(x) / x
-            if abs(y) > maxMag:
-                y = maxMag * abs(y) / y
-            # end temp limiter
-
-            mouse.send((x,y))
+            send_xy((xy_list[0], xy_list[1]))
 
         except Exception as e:
-            pass
+            print(e)
+else:
+    initialize()

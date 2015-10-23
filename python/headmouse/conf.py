@@ -5,7 +5,6 @@ import ConfigParser
 import pkgutil
 
 USER_CONFIG_FILE = os.path.expanduser("~/.headmouse")
-TEMP_FILE = os.path.expanduser("~/.headmouse.scratch")
 config_parser = ConfigParser.SafeConfigParser()
 
 

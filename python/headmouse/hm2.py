@@ -9,6 +9,7 @@ import util
 import conf
 from vision.naive_dots import Vision
 from cameras import v4l2_loopback_camera as camera
+import filters
 
 current_config = conf.render()
 output_driver = None
@@ -31,10 +32,16 @@ def f(conn):
 
 
 if __name__ == '__main__':
+    # Set up filters
+    xy_delta_gen = filters.relative_movement()
+
+    # GUI process setup
+    # Todo: give variables more descriptive names.
     parent_conn, child_conn = Pipe()
     p = Process(target=f, args=(child_conn,))
     p.start()
 
+    # Application restart involves multiple processes and can be triggered from multiple places.
     def restart():
         p.terminate()
         python = sys.executable
@@ -59,6 +66,7 @@ if __name__ == '__main__':
 
             while True:
                 try:
+                    # Handle messages from GUI component
                     if parent_conn.poll(.001):
                         pipe_data = parent_conn.recv()
 
@@ -77,11 +85,16 @@ if __name__ == '__main__':
                         if not p.is_alive():
                             sys.exit("GUI component has terminated.")
 
+                    # Frame processing
                     viz.get_image()
-                    x, y, z = viz.process()
+                    coords = viz.process()
 
-                    # Todo: Important! calculate deltas here.
-                    output_driver.send_xy(x, y)
+                    coords = filters.mirror(coords)
+                    abs_pos_x, abs_pos_y, abs_pos_z = coords
+
+                    xy = xy_delta_gen.send((abs_pos_x, abs_pos_y))
+
+                    output_driver.send_xy(xy)
 
                     display_frame.next()
                     send_fps.next()
