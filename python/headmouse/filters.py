@@ -143,8 +143,13 @@ def stateful_smoother():
                 aug_coords[i] = 0
 
 
-def accelerate(coords):
-    return [6 * coords[0], 6* coords[1]]
+def accelerate(coords, conf):
+    p = 2
+
+    v_mag = numpy.linalg.norm(coords) # Get vector magnitude
+    scale = v_mag ** (p - 1) * conf['acceleration'] + conf['sensitivity']
+
+    return tuple(map(lambda x: scale * x, coords))
 
 
 @consumer

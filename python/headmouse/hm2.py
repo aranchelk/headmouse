@@ -7,25 +7,29 @@ import gui_menu
 from multiprocessing import Process, Pipe
 import util
 import conf
-from vision.naive_dots import Vision
 from cameras import v4l2_loopback_camera as camera
 import filters
 
 current_config = conf.render()
 output_driver = None
+vision_driver = None
+restart_required = False
 
 # Todo: replace this with a generic method for all drivers
 # Todo: consider renaming vision and camera dirs with _drivers
 def set_output_driver(driver_name):
     global output_driver
     output_driver = __import__('output_drivers.' + driver_name).__dict__[driver_name]
-    #print(dir(output_driver))
+
+
+def set_vision_driver(driver_name):
+    global vision_driver, restart_required
+    vision_driver = __import__('vision.' + driver_name).__dict__[driver_name]
+    restart_required=True
+
 
 # Todo:
 # To this add lambdas to output, camera, and algorithm to dynamically load the modules
-# Add "Save and restart" button to GUI
-# Move algorithms to subdir
-
 
 def f(conn):
     gui_menu.initialize(conn)
@@ -58,48 +62,57 @@ if __name__ == '__main__':
     current_config.register_callback('output', lambda k, v: set_output_driver(v))
     set_output_driver(current_config['output'])
 
-    with camera.Camera(current_config) as cam:
-        with Vision(cam, current_config) as viz:
-            display_frame = util.Every_n(3, viz.display_image)
+    current_config.register_callback('algorithm', lambda k, v: set_vision_driver(v))
+    set_vision_driver(current_config['algorithm'])
 
-            # Todo: when conf run all registered_callbacks method is in place, run it here.
+    while True:
+        with camera.Camera(current_config) as cam:
+            with vision_driver.Vision(cam, current_config) as viz:
+                display_frame = util.Every_n(3, viz.display_image)
 
-            while True:
-                try:
-                    # Handle messages from GUI component
-                    if parent_conn.poll(.001):
-                        pipe_data = parent_conn.recv()
+                # Todo: when conf run all registered_callbacks method is in place, run it here.
+                restart_required = False
 
-                        if 'config' in pipe_data:
-                            current_config.update_all(pipe_data['config'])
-                            # print(conf.current_config)
-                        elif 'control' in pipe_data:
-                            control_message = pipe_data['control']
+                while not restart_required:
+                    try:
+                        # Handle messages from GUI component
+                        if parent_conn.poll(.001):
+                            pipe_data = parent_conn.recv()
 
-                            if control_message == 'restart':
-                                restart()
-                            else:
-                                #print(control_message)
-                                pass
-                    else:
-                        if not p.is_alive():
-                            sys.exit("GUI component has terminated.")
+                            if 'config' in pipe_data:
+                                current_config.update_all(pipe_data['config'])
+                                # print(conf.current_config)
+                            elif 'control' in pipe_data:
+                                control_message = pipe_data['control']
 
-                    # Frame processing
-                    viz.get_image()
-                    coords = viz.process()
+                                if control_message == 'restart':
+                                    restart()
+                                else:
+                                    #print(control_message)
+                                    pass
+                        else:
+                            if not p.is_alive():
+                                sys.exit("GUI component has terminated.")
 
-                    coords = filters.mirror(coords)
-                    abs_pos_x, abs_pos_y, abs_pos_z = coords
+                        # Frame processing
+                        viz.get_image()
+                        coords = viz.process()
 
-                    xy = xy_delta_gen.send((abs_pos_x, abs_pos_y))
+                        if None in coords:
+                            continue
 
-                    output_driver.send_xy(xy)
+                        coords = filters.mirror(coords)
+                        abs_pos_x, abs_pos_y, abs_pos_z = coords
 
-                    display_frame.next()
-                    send_fps.next()
+                        xy = xy_delta_gen.send((abs_pos_x, abs_pos_y))
+                        xy = filters.accelerate(xy, current_config)
+
+                        output_driver.send_xy(xy)
+
+                        display_frame.next()
+                        send_fps.next()
 
 
-                except KeyboardInterrupt:
-                    p.terminate()
-                    sys.exit()
+                    except KeyboardInterrupt:
+                        p.terminate()
+                        sys.exit()

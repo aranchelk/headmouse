@@ -9,7 +9,7 @@ config_parser = ConfigParser.SafeConfigParser()
 
 
 def get_modules_in_dir(dir_name):
-    return [name for _, name, _ in pkgutil.iter_modules([dir_name])]
+    return [name for _, name, _ in pkgutil.iter_modules([dir_name]) if name[0] != '_' ]
 
 
 class ObservableDict(dict):

@@ -7,6 +7,7 @@ sys.path.append(os.path.dirname(os.path.realpath(__file__)) + "/..")
 
 import cv2
 import util
+import _vision
 
 
 def midrange(numList):
@@ -70,25 +71,8 @@ def display(faces=None, objects=None, kp=None, coords=(None, None), boxes=None, 
     cv2.imshow('frame', cv2.flip(img, flipCode=1))
 
 
-class Vision:
-    def __init__(self, camera, config):
-        self.config = config
-        self.camera = camera
-        self.frame = None
-        self.x = None
-        self.y = None
-        self.z = None
-
-    def __enter__(self):
-        self.camera.__enter__()
-        return self
-
-    def __exit__(self, *args):
-        self.camera.__exit__(*args)
-
-    def get_image(self):
-        self.frame = self.camera.get_image()
-        return self.frame
+# Todo: Make this generic and place in a shared vision library
+class Vision(_vision.Vision):
 
     def display_image(self):
         #cv2.imshow('frame', cv2.flip(self.frame,flipCode=1))
@@ -148,7 +132,6 @@ if __name__ == "__main__":
 
                     display_frame.next()
                     print_fps.next()
-
 
     except KeyboardInterrupt:
         print("Program exiting.")
