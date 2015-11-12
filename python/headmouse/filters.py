@@ -1,4 +1,5 @@
 # coding=utf8
+from __future__ import print_function
 
 import logging
 logger = logging.getLogger(__name__)
@@ -100,6 +101,8 @@ def ema_smoother(alpha=0.5):
     while True:
         x_in, y_in = yield v_out
         v_out = ema_x.send(x_in), ema_y.send(y_in)
+        #print((x_in, y_in), v_out)
+        #print('smoothing')
 
 @consumer
 def slow_smoother(alpha=0.5):
@@ -134,7 +137,7 @@ def stateful_smoother():
         orig_coords = yield aug_coords
 
         for i in range(2):
-            print i
+            print(i)
             if math.fabs(orig_coords[i] + stored_coords[i]) > threshold[i]:
                 aug_coords[i] = orig_coords[i]
                 stored_coords[i] = 0
@@ -166,7 +169,7 @@ def accelerate_exp(p=2, accel=6, sensitivity=0):
 def killOutliers(coords, threshold=2000):
     if math.fabs(coords[0]) > threshold or math.fabs(coords[1]) > threshold:
         logger.info("*** Outlier ***")
-        print 'outlier'
+        print('outlier')
         return [0,0]
     else:
         return coords

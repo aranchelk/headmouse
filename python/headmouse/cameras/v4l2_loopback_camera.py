@@ -38,16 +38,20 @@ class Camera():
     def setup_loopback_camera(self):
         # Check to see if a loopback camera already exists: # v4l2-ctl --list-devices (parse result
         subprocess.call(shlex.split("sudo modprobe v4l2loopback"))
-        ffmpeg_cmd = "ffmpeg -f video4linux2 -input_format mjpeg -s %dx%d -i /dev/video1 -vcodec rawvideo -pix_fmt gray -threads 0 -f v4l2 /dev/video2" % (self.conf['width'], self.conf['height'])
+        ffmpeg_cmd = "ffmpeg -f video4linux2 -input_format mjpeg -s %dx%d -i /dev/video1 -vcodec rawvideo -pix_fmt gray -threads 0 -f v4l2 /dev/video2" % self.conf['camera_dimensions']
         #print ffmpeg_cmd
 
         self.stream_transcoder_process = subprocess.Popen(shlex.split(ffmpeg_cmd), stdout=open(os.devnull, 'w'), stderr=subprocess.STDOUT) # something long running
-        time.sleep(1)
+
+        time.sleep(2)
         pass
 
     def teardown_loopback_camera(self):
+        print("Killing ffmpeg process...")
+        self.stream_transcoder_process.terminate()
         subprocess.call(shlex.split("sudo modprobe -r v4l2loopback"))
-        self.stream_transcoder_process.kill()
+        #time.sleep(2)
+        print("Done trying to kill process.")
 
     def reset_loopback_camera(self):
         self.teardown_loopback_camera()
@@ -58,9 +62,12 @@ class Camera():
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        #print 'Camera cleaning up...'
+        print 'Camera cleaning up...'
         self.cap.release()
         cv2.destroyWindow(self.window_id)
+        time.sleep(2)
+        self.teardown_loopback_camera()
+
         # Todo: add a function to destroy loopback camera
 
     def get_image(self):
@@ -76,9 +83,6 @@ class Camera():
         if self.frame is not None:
             # More intuitive for user to see a mirror image.
             cv2.imshow('frame', cv2.flip(self.frame,flipCode=1))
-
-    def get_camera_id(self):
-        return 2
 
     def process(self):
         # Not implemented

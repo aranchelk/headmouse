@@ -98,8 +98,6 @@ if __name__ == "__main__":
     try:
         with camera.Camera(camera_config) as cam:
             vision_config = camera_config.copy()
-            vision_config['device_id']=cam.get_camera_id()
-            print(vision_config)
 
             with Vision(cam, vision_config) as viz:
                 display_frame = util.Every_n(1, viz.display_image)

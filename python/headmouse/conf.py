@@ -3,6 +3,7 @@ from __future__ import print_function
 import os
 import ConfigParser
 import pkgutil
+from ast import literal_eval as make_tuple
 
 USER_CONFIG_FILE = os.path.expanduser("~/.headmouse")
 config_parser = ConfigParser.SafeConfigParser()
@@ -41,34 +42,22 @@ class ObservableDict(dict):
 
 # Contains default values and establishes types for values parsed from ini files
 template_config = {
-        'output': 'arduino',
-        'arduino_baud': 115200,
-        # 'arduino_port': '/dev/tty.usbmodemfa13131',
-        'device_id':2,
+        'output': 'null', # output driver
 
-        'width': 640,
-        'height': 480,
-        'format_': 1,
+        'camera':'simple_camera', # Camera driver
+        'camera_device_id':1,
+        'camera_dimensions': (640, 480),
         'display':True,
-        'gray_scale':False,
 
-        'algorithm':'naive_dots_vision',
-        'camera':'v4l2_looback_camera',
-
-        'input':'camera',
-        'input_tracker':'dot_tracker',
-        'input_visualize': True,
+        'algorithm':'better_dots',
         'input_realtime_search_timeout': 2.0,
         'input_slow_search_delay': 2.0,
 
-        'input_camera_name': 0,
-        # Todo: change wxh to this format 'input_camera_resolution': (1280, 720),
-        'input_camera_fps': 30,
 
         'acceleration': 2.3,
         'sensitivity': 2.0,
         'smoothing': 0.90,
-        'output_smoothing': 0.90,
+
         'distance_scaling': True,
         'dot_threshold': 245,
         'camera_gain': 0,
@@ -96,18 +85,37 @@ scale_data = {
 }
 
 
+def cast_by_template(coll, template):
+    for template_key,template_val in template.iteritems():
+        if template_key in coll:
+            if isinstance(template_val, tuple): # This should be more flexible
+                coll[template_key] = tuple_cast_by_template(coll[template_key], template[template_key])
+            else:
+                coll[template_key] = type(template_val)(coll[template_key])
+
+    return coll
+
+
+def tuple_cast_by_template(coll, template):
+    coll = make_tuple(coll)
+
+    if len(coll) != len(template):
+        raise ValueError("Lenghts don't match between collection and template.")
+    ret = []
+
+    for ind, val in enumerate(template):
+        ret.append( type(template[ind])(coll[ind]))
+
+    return tuple(ret)
+
+
 def from_file(file_path, template):
     try:
         config_parser.read([file_path])
         conf = dict(config_parser.items('headmouse'))
 
         if template is not None:
-            # Cast values from config parser to match template_config types
-            # Parser always returns dict of strings, or requires procedural casting
-            for k,v in template.iteritems():
-                if k in conf:
-                    conf[k] = type(v)(conf[k])
-        return conf
+            return cast_by_template(conf, template)
 
     except ConfigParser.NoSectionError:
         print("No config available!")

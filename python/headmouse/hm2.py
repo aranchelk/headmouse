@@ -7,13 +7,17 @@ import gui_menu
 from multiprocessing import Process, Pipe
 import util
 import conf
-from cameras import v4l2_loopback_camera as camera
+#from cameras import v4l2_loopback_camera as camera
 import filters
 
 current_config = conf.render()
 output_driver = None
 vision_driver = None
-restart_required = False
+camera_driver = None
+smoother = None
+needs_reinitialization = False
+needs_shutdown = False
+needs_restart = False
 
 # Todo: replace this with a generic method for all drivers
 # Todo: consider renaming vision and camera dirs with _drivers
@@ -23,9 +27,21 @@ def set_output_driver(driver_name):
 
 
 def set_vision_driver(driver_name):
-    global vision_driver, restart_required
+    global vision_driver, needs_reinitialization
     vision_driver = __import__('vision.' + driver_name).__dict__[driver_name]
-    restart_required=True
+    needs_reinitialization=True
+
+
+def set_camera_driver(driver_name):
+    global camera_driver, needs_reinitialization
+    camera_driver = __import__('cameras.' + driver_name).__dict__[driver_name]
+    needs_reinitialization=True
+
+
+def set_smoother(smoothing_amount):
+    global smoother
+    smoothing_amount = 1 - smoothing_amount
+    smoother = filters.ema_smoother(smoothing_amount)
 
 
 # Todo:
@@ -59,21 +75,29 @@ if __name__ == '__main__':
     conf_from_gui = parent_conn.recv()['config']
     current_config.update_all(conf_from_gui)
 
+    # Todo: Need a fire all callbacks method on observable dict
     current_config.register_callback('output', lambda k, v: set_output_driver(v))
     set_output_driver(current_config['output'])
 
     current_config.register_callback('algorithm', lambda k, v: set_vision_driver(v))
     set_vision_driver(current_config['algorithm'])
 
-    while True:
-        with camera.Camera(current_config) as cam:
+    current_config.register_callback('camera', lambda k, v: set_camera_driver(v))
+    set_camera_driver(current_config['camera'])
+
+    current_config.register_callback('smoothing', lambda k, v: set_smoother(v))
+    set_smoother(current_config['smoothing'])
+
+    # Todo: Don't reinitialize camera for algorithm change
+    while not (needs_shutdown or needs_restart):
+        with camera_driver.Camera(current_config) as cam:
             with vision_driver.Vision(cam, current_config) as viz:
                 display_frame = util.Every_n(3, viz.display_image)
 
                 # Todo: when conf run all registered_callbacks method is in place, run it here.
-                restart_required = False
+                needs_reinitialization = False
 
-                while not restart_required:
+                while not (needs_reinitialization or needs_shutdown or needs_restart):
                     try:
                         # Handle messages from GUI component
                         if parent_conn.poll(.001):
@@ -86,9 +110,9 @@ if __name__ == '__main__':
                                 control_message = pipe_data['control']
 
                                 if control_message == 'restart':
-                                    restart()
+                                    needs_restart = True
                                 else:
-                                    #print(control_message)
+                                    print("Unhandled control message", control_message)
                                     pass
                         else:
                             if not p.is_alive():
@@ -105,14 +129,25 @@ if __name__ == '__main__':
                         abs_pos_x, abs_pos_y, abs_pos_z = coords
 
                         xy = xy_delta_gen.send((abs_pos_x, abs_pos_y))
+
+                        # Todo: add outliers here.
+
+                        xy = smoother.send(xy)
                         xy = filters.accelerate(xy, current_config)
+
 
                         output_driver.send_xy(xy)
 
                         display_frame.next()
                         send_fps.next()
 
-
                     except KeyboardInterrupt:
-                        p.terminate()
-                        sys.exit()
+                        needs_restart = False
+                        needs_shutdown = True
+
+    if needs_restart:
+        restart()
+
+    p.terminate()
+    sys.exit()
+
