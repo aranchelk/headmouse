@@ -43,7 +43,6 @@ def display(faces=None, objects=None, kp=None, coords=(None, None, None), dot_ma
 class Vision(_vision.Vision):
 
     def display_image(self):
-        #cv2.imshow('frame', cv2.flip(self.frame,flipCode=1))
         display(img=self.frame, dot_map=self.dots, coords=(self.x, self.y, self.z))
         pass
 

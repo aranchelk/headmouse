@@ -7,7 +7,6 @@ import gui_menu
 from multiprocessing import Process, Pipe
 import util
 import conf
-#from cameras import v4l2_loopback_camera as camera
 import filters
 
 current_config = conf.render()
@@ -44,13 +43,6 @@ def set_smoother(smoothing_amount):
     smoother = filters.ema_smoother(smoothing_amount)
 
 
-# Todo:
-# To this add lambdas to output, camera, and algorithm to dynamically load the modules
-
-def f(conn):
-    gui_menu.initialize(conn)
-
-
 if __name__ == '__main__':
     # Set up filters
     xy_delta_gen = filters.relative_movement()
@@ -58,12 +50,12 @@ if __name__ == '__main__':
     # GUI process setup
     # Todo: give variables more descriptive names.
     parent_conn, child_conn = Pipe()
-    p = Process(target=f, args=(child_conn,))
-    p.start()
+    gui_child_process = Process(target=gui_menu.initialize, args=(child_conn,))
+    gui_child_process.start()
 
     # Application restart involves multiple processes and can be triggered from multiple places.
     def restart():
-        p.terminate()
+        gui_child_process.terminate()
         python = sys.executable
         os.execl(python, python, * sys.argv)
 
@@ -115,7 +107,7 @@ if __name__ == '__main__':
                                     print("Unhandled control message", control_message)
                                     pass
                         else:
-                            if not p.is_alive():
+                            if not gui_child_process.is_alive():
                                 sys.exit("GUI component has terminated.")
 
                         # Frame processing
@@ -148,6 +140,6 @@ if __name__ == '__main__':
     if needs_restart:
         restart()
 
-    p.terminate()
+    gui_child_process.terminate()
     sys.exit()
 
