@@ -84,7 +84,7 @@ if __name__ == '__main__':
     while not (needs_shutdown or needs_restart):
         with camera_driver.Camera(current_config) as cam:
             with vision_driver.Vision(cam, current_config) as viz:
-                display_frame = util.Every_n(3, viz.display_image)
+                display_frame = util.Every_n(4, viz.display_image)
 
                 # Todo: when conf run all registered_callbacks method is in place, run it here.
                 needs_reinitialization = False
@@ -114,24 +114,20 @@ if __name__ == '__main__':
                         viz.get_image()
                         coords = viz.process()
 
-                        if None in coords:
-                            continue
+                        if None not in coords:
+                            coords = filters.mirror(coords)
+                            abs_pos_x, abs_pos_y, abs_pos_z = coords
+                            xy = xy_delta_gen.send((abs_pos_x, abs_pos_y))
 
-                        coords = filters.mirror(coords)
-                        abs_pos_x, abs_pos_y, abs_pos_z = coords
+                            if not filters.detect_outliers(xy, current_config['max_input_distance']):
+                                xy = smoother.send(xy)
+                                xy = filters.accelerate(xy, current_config)
 
-                        xy = xy_delta_gen.send((abs_pos_x, abs_pos_y))
-
-                        # Todo: add outliers here.
-
-                        xy = smoother.send(xy)
-                        xy = filters.accelerate(xy, current_config)
-
-
-                        output_driver.send_xy(xy)
+                                output_driver.send_xy(xy)
 
                         display_frame.next()
                         send_fps.next()
+
 
                     except KeyboardInterrupt:
                         needs_restart = False
@@ -142,4 +138,3 @@ if __name__ == '__main__':
 
     gui_child_process.terminate()
     sys.exit()
-

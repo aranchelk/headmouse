@@ -53,10 +53,10 @@ template_config = {
         'input_realtime_search_timeout': 2.0,
         'input_slow_search_delay': 2.0,
 
-
         'acceleration': 2.3,
         'sensitivity': 2.0,
         'smoothing': 0.90,
+        'max_input_distance': 70,
 
         'distance_scaling': True,
         'dot_threshold': 245,
