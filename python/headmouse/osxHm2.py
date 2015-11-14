@@ -45,6 +45,7 @@ def set_smoother(smoothing_amount):
 
 
 def watch_config():
+    # Todo: remove global declaration, since dicts are mutable, should work.
     global current_config
     while not needs_shutdown:
         time.sleep(1)

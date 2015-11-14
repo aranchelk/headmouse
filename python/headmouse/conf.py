@@ -14,27 +14,31 @@ def get_modules_in_dir(dir_name):
 
 
 class ObservableDict(dict):
-    # Extending Python dict with callbacks
+    # Extending Python dict with callback registration
     def __init__(self, *args, **kwargs):
         self.callbacks = {}
         super(ObservableDict, self).__init__(*args, **kwargs)
 
     def __setitem__(self, key, value):
-        # We don't set the same key to the value twice to avoid triggering callbacks unnecessarily
+        # We only fire the callback if the value has actually changed.
         if self.__getitem__(key) != value:
             if key in self.callbacks:
                 for f in self.callbacks[key]:
                     f(key, value)
-                    # was debugging multiple instances of module print(id(self))
         super(ObservableDict, self).__setitem__(key, value)
 
     def register_callback(self, conf_key, function):
-        if conf_key in self.callbacks:
-            self.callbacks[conf_key].append(function)
-        else:
+        if conf_key not in self.callbacks:
             self.callbacks[conf_key] = [function]
+        else:
+            self.callbacks[conf_key].append(function)
 
-    # Todo: add method to run all callbacks
+    def execute_all_callbacks(self):
+        for key, func_list in self.callbacks.iteritems():
+            dict_val = self.__getitem__(key)
+            for f in func_list:
+                f(key, dict_val)
+
 
     def update_all(self, new_val_dict):
         for k, v in new_val_dict.iteritems():

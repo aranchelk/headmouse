@@ -15,7 +15,8 @@ class Vision(object):
         return self
 
     def __exit__(self, *args):
-        self.camera.__exit__(*args)
+        #self.camera.__exit__(*args)
+        pass
 
     def get_image(self):
         self.frame = self.camera.get_image()

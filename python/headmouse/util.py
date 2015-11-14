@@ -48,39 +48,19 @@ class Every_n:
 
 
 def simple_fps():
-    last_time = float(time.time())
+    last_time = None
     fps = None
     frames = 1
 
     while True:
         current_time = float(time.time())
-        yield 1.0 / (current_time - last_time)
+        if last_time is not None:
+            fps = 1.0 / (current_time - last_time)
+        else:
+            fps = 0.0
+
+        yield fps
         last_time = current_time
-
-
-
-# def calculate_fps(calc_interval):
-#     last_time = float(time.time())
-#     fps = None
-#     frames = 0
-#
-#     while True:
-#         frames = yield fps
-#         frames += 1
-#         current_time = float(time.time())
-#         interval = current_time - last_time
-#
-#         if (interval > calc_interval):
-#
-#             #calculate fps
-#             fps = frames / interval
-#
-#             #reset start values
-#             last_time = current_time
-#             frames = 0
-#
-#         else:
-#             fps = None
 
 
 class Stats(collections.defaultdict):
