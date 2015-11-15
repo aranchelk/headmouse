@@ -16,39 +16,32 @@ output_driver = None
 vision_driver = None
 camera_driver = None
 smoother = None
+# Todo: Think of ways to make this more elegant, mabye an application state dict, or something.
 needs_reinitialization = False
 needs_shutdown = False
 needs_restart = False
 
-# Todo: replace this with a generic method for all drivers
+
 # Todo: consider renaming vision and camera dirs with _drivers
-def set_output_driver(driver_name):
-    global output_driver
-    output_driver = __import__('output_drivers.' + driver_name).__dict__[driver_name]
+def update_component(c_name, c_value):
+    global smoother, camera_driver, vision_driver, output_driver, needs_reinitialization
+
+    if c_name == 'camera':
+        camera_driver = __import__('cameras.' + c_value).__dict__[c_value]
+        needs_reinitialization=True
+    elif c_name == 'algorithm':
+        vision_driver = __import__('vision.' + c_value).__dict__[c_value]
+        needs_reinitialization=True
+    elif c_name == 'output':
+        output_driver = __import__('output_drivers.' + c_value).__dict__[c_value]
+    elif c_name == 'smoothing':
+        smoother = filters.ema_smoother(c_value)
 
 
-def set_vision_driver(driver_name):
-    global vision_driver, needs_reinitialization
-    vision_driver = __import__('vision.' + driver_name).__dict__[driver_name]
-    needs_reinitialization=True
-
-
-def set_camera_driver(driver_name):
-    global camera_driver, needs_reinitialization
-    camera_driver = __import__('cameras.' + driver_name).__dict__[driver_name]
-    needs_reinitialization=True
-
-
-def set_smoother(smoothing_amount):
-    global smoother
-    smoothing_amount = 1 - smoothing_amount
-    smoother = filters.ema_smoother(smoothing_amount)
-
-
-def handle_gui_process_messages(parent_conn, gui_child_process):
+def handle_gui_process_messages(parent_conn, gui_child_process, polling_wait=.001):
     global needs_restart, needs_shutdown
 
-    if parent_conn.poll(.001):
+    if parent_conn.poll(polling_wait):
         pipe_data = parent_conn.recv()
 
         if 'config' in pipe_data:
@@ -76,9 +69,10 @@ if __name__ == '__main__':
     parent_conn, child_conn = Pipe()
     gui_child_process = Process(target=gui_menu.initialize, args=(child_conn,))
     gui_child_process.start()
+    handle_gui_process_messages(parent_conn, gui_child_process, polling_wait=1)
 
-    t = threading.Thread(target=watch_gui_process, args=(parent_conn, gui_child_process))
-    t.start()
+    gui_watcher_thread = threading.Thread(target=watch_gui_process, args=(parent_conn, gui_child_process))
+    gui_watcher_thread.start()
 
     # Application restart involves multiple processes and can be triggered from multiple places.
     def restart():
@@ -92,12 +86,10 @@ if __name__ == '__main__':
     fps = util.simple_fps()
     send_fps = util.Every_n(60, lambda: parent_conn.send(str( float("{0:.2f}".format(fps.next() * 60)))))
 
-    handle_gui_process_messages(parent_conn, gui_child_process)
-
-    config.register_callback('output', lambda k, v: set_output_driver(v))
-    config.register_callback('algorithm', lambda k, v: set_vision_driver(v))
-    config.register_callback('camera', lambda k, v: set_camera_driver(v))
-    config.register_callback('smoothing', lambda k, v: set_smoother(v))
+    config.register_callback('output', update_component)
+    config.register_callback('algorithm', update_component)
+    config.register_callback('camera', update_component)
+    config.register_callback('smoothing', update_component)
 
     config.execute_all_callbacks()
 

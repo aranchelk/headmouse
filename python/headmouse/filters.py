@@ -94,15 +94,18 @@ def ema(alpha):
         out = in_ * alpha + out * (1 - alpha)
 
 @consumer
-def ema_smoother(alpha=0.5):
+def ema_smoother(smoothing_amount):
+    if smoothing_amount > 1 or smoothing_amount < 0:
+        raise ValueError("Valid smoothing amounts are between 0 and 1.")
+
+    alpha = 1 - smoothing_amount
+
     v_out = 0
     ema_x, ema_y = ema(alpha), ema(alpha)
 
     while True:
         x_in, y_in = yield v_out
         v_out = ema_x.send(x_in), ema_y.send(y_in)
-        #print((x_in, y_in), v_out)
-        #print('smoothing')
 
 @consumer
 def slow_smoother(alpha=0.5):
