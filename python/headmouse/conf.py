@@ -81,7 +81,7 @@ option_menu_data = {
 scale_data = {
     # tuple(min, max, grad)
     'acceleration': (0, 3, .1),
-    'sensitivity': (0, 2, .1),
+    'sensitivity': (0, 3, .1),
     'smoothing': (0, 1, .05),
     'dot_threshold': (200, 254, 1),
     'camera_gain': (0, 100, 5),

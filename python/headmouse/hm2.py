@@ -4,6 +4,7 @@
 # Todo: Option to record video and xyz
 # Todo: Turn display on and off.
 # Todo: conf binary options
+# Todo: conf write in number option
 # Todo: Think of ways to make needs_ vars more elegant, maybe a service.
 # Todo: consider renaming vision and camera dirs with _drivers
 # Todo: resolution selection in GUI
