@@ -1,5 +1,13 @@
 #!/usr/bin/env python
 
+# Todo: Record and print total stats at end of run, write out to file, maybe csv.
+# Todo: Option to record video and xyz
+# Todo: Turn display on and off.
+# Todo: conf binary options
+# Todo: Think of ways to make needs_ vars more elegant, maybe a service.
+# Todo: consider renaming vision and camera dirs with _drivers
+# Todo: resolution selection in GUI
+
 from __future__ import print_function
 import sys
 import os
@@ -16,13 +24,11 @@ output_driver = None
 vision_driver = None
 camera_driver = None
 smoother = None
-# Todo: Think of ways to make this more elegant, mabye an application state dict, or something.
 needs_reinitialization = False
 needs_shutdown = False
 needs_restart = False
 
 
-# Todo: consider renaming vision and camera dirs with _drivers
 def update_component(c_name, c_value):
     global smoother, camera_driver, vision_driver, output_driver, needs_reinitialization
 

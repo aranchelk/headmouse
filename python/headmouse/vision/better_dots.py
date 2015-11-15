@@ -43,7 +43,7 @@ def display(faces=None, objects=None, kp=None, coords=(None, None, None), dot_ma
 class Vision(_vision.Vision):
 
     def display_image(self):
-        display(img=self.frame, dot_map=self.dots, coords=(self.x, self.y, self.z))
+        display(img=self.frame, coords=(self.x, self.y, self.z), dot_map=self.dots)
         pass
 
     def process(self):
@@ -55,7 +55,8 @@ class Vision(_vision.Vision):
             gray = cv2.cvtColor(self.frame, cv2.COLOR_BGR2GRAY)
             ret, thresh3 = cv2.threshold(gray,self.config['dot_threshold'],255,cv2.THRESH_BINARY)
 
-            xs, ys = np.rot90(np.argwhere(thresh3))
+            indexed_dots = np.argwhere(thresh3) # 75 to 80 without, 66-67 with
+            xs, ys = np.rot90(indexed_dots) # no obvious difference
 
             try:
                 self.x = (np.ndarray.max(xs) + np.ndarray.min(xs))/2
