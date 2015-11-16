@@ -46,6 +46,7 @@ class Vision(_vision.Vision):
         cv2.imshow('frame', cv2.flip(self.frame, flipCode=1))
 
     def process(self):
+        # ROI example http://docs.opencv.org/master/d7/d8b/tutorial_py_face_detection.html#gsc.tab=0
         if self.frame is not None:
             gray = cv2.cvtColor(self.frame, cv2.COLOR_BGR2GRAY)
             self.faces = eye_cascade.detectMultiScale(gray)
