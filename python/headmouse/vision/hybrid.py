@@ -10,6 +10,27 @@ import util
 import _vision
 import numpy as np
 
+import pkg_resources
+import tempfile
+
+
+cascade_file = tempfile.NamedTemporaryFile()
+try:
+    cascade_file.write(pkg_resources.resource_stream(
+        __name__,
+        '../data/cascades/haarcascade_frontalface_alt.xml'
+        #'data/cascades/Nariz.xml'
+    ).read())
+except:
+    with open('haarcascade_frontalface_alt.xml', 'rb') as f:
+        cascade_file.write(f.read())
+finally:
+    cascade_file.flush()
+
+EYE_CASCADE_FILE = cascade_file.name
+eye_cascade_file=EYE_CASCADE_FILE
+eye_cascade = cv2.CascadeClassifier(eye_cascade_file)
+
 
 def midrange(numList):
     return (max(numList) + min(numList))/2
@@ -19,11 +40,17 @@ def midrange(numList):
 class Vision(_vision.Vision):
 
     def display_image(self):
+        for (x,y,w,h) in self.faces:
+            cv2.rectangle(self.frame,(x,y),(x+w,y+h),(255,0,0),2)
+
         cv2.imshow('frame', cv2.flip(self.frame, flipCode=1))
 
     def process(self):
         if self.frame is not None:
-            pass
+            gray = cv2.cvtColor(self.frame, cv2.COLOR_BGR2GRAY)
+            self.faces = eye_cascade.detectMultiScale(gray)
+
+            self.frame = gray
         return 0, 0, 0
 
 
