@@ -8,6 +8,8 @@
 # Todo: Think of ways to make needs_ vars more elegant, maybe a service.
 # Todo: consider renaming vision and camera dirs with _drivers
 # Todo: resolution selection in GUI
+# Todo: save profiles
+# Todo: auto-config
 
 from __future__ import print_function
 import sys

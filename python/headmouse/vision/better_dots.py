@@ -48,10 +48,6 @@ class Vision(_vision.Vision):
 
     def process(self):
         if self.frame is not None:
-            # TODO: real distance, or measured fixed distance value
-            detector = cv2.ORB()
-
-            x, y = None, None
             gray = cv2.cvtColor(self.frame, cv2.COLOR_BGR2GRAY)
             ret, thresh3 = cv2.threshold(gray,self.config['dot_threshold'],255,cv2.THRESH_BINARY)
 
@@ -67,6 +63,7 @@ class Vision(_vision.Vision):
                 self.y = 0
                 pass
 
+            # TODO: real distance, or measured fixed distance value
             self.z = 10
 
             self.dots = thresh3

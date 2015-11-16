@@ -238,7 +238,7 @@ class Vision(_vision.Vision):
             kpx_stats.push(cropped_gray.size / 1000.)
             scale_stats.push(scale_factor)
 
-            objects_raw = self.eye_cascade.detectMultiScale(cropped_gray)
+            objects_raw = self.eye_cascade.detectMultiScale(gray)
 
             # normalize object coords to full frame
             objects = [(
