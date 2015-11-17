@@ -40,6 +40,9 @@ def midrange(numList):
     return (max(numList) + min(numList))/2
 
 
+def annotate_dot_search(img, (x,y), rad, color=(0,255,0)):
+    cv2.rectangle(img,(x - rad, y - rad), (x + rad, y + rad), color, 2)
+    cv2.circle(img, (x,y), 2, color, 3)
 
 
 # Todo: Make this generic and place in a shared vision library
@@ -55,31 +58,33 @@ class Vision(_vision.Vision):
 
     def display_image(self):
         self.frame = cv2.cvtColor(self.frame, cv2.COLOR_GRAY2BGR)
-        if self.faces is not None:
+        if self.faces is not None and self.faces != ():
+            face_list = self.faces.tolist()
+
+            #print(face_list)
+
+            if len(face_list) > 1:
+                print("multiple faces detected.")
+                face_list = [sorted(face_list, key=lambda (x,y,w,h): h, reverse=True)[0]]
+
             for (x,y,w,h) in self.faces:
                 cv2.rectangle(self.frame,(x,y),(x+w,y+h),(255,0,0),2)
 
-                rr_loc = (int(x + w/10), int(y + h * .3))
-                rr_rad = h/4
+            for (x,y,w,h) in face_list:
+                cv2.rectangle(self.frame,(x,y),(x+w,y+h),(255,0,0),2)
 
+                rr_loc = (int(x + w/10), int(y + h * .3))
                 lr_loc = (int(x + w* 9/10), int(y + h * .3))
 
-                cv2.rectangle(self.frame,(rr_loc[0] - rr_rad, rr_loc[1] - rr_rad),
-                              (rr_loc[0] + rr_rad, rr_loc[1] + rr_rad),(0,255,0),2)
+                r_rad = h/4
 
-                cv2.circle(self.frame, rr_loc, 2, (0, 255, 0), 3)
-
-                cv2.rectangle(self.frame,(lr_loc[0] - rr_rad, rr_loc[1] - rr_rad),
-                              (lr_loc[0] + rr_rad, lr_loc[1] + rr_rad),(0,255,0),2)
-
-                cv2.circle(self.frame, lr_loc, 2, (0, 255, 0), 3)
+                annotate_dot_search(self.frame, rr_loc, r_rad)
+                annotate_dot_search(self.frame, lr_loc, r_rad, color=(0,0,255))
 
         cv2.imshow('frame', cv2.flip(self.frame, flipCode=1))
 
     def process(self):
         # Todo:
-        # * Hard code reflector locations
-        # * Nice color display
         # * Search only in reflector locations
         # * Update ROI based on reflector location
         # * If reflector location is empty, scan
