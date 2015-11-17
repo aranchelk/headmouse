@@ -16,6 +16,11 @@ def midrange(numList):
 
 
 def display(faces=None, objects=None, kp=None, coords=(None, None, None), dot_map=None, boxes=None, img=None):
+    img = annotate_image(img, dot_map=dot_map, coords=coords)
+    cv2.imshow('frame', cv2.flip(img, flipCode=1))
+
+
+def annotate_image(img, dot_map=None, coords=None):
     if dot_map is not None:
         mask = cv2.bitwise_not(dot_map)
 
@@ -30,13 +35,11 @@ def display(faces=None, objects=None, kp=None, coords=(None, None, None), dot_ma
 
         img = cv2.add(masked_gray, all_red)
 
-    if coords:
-        x, y, distance = coords
-    if img is not None:
-        if x is not None and y is not None:
-            cv2.circle(img, (int(x), int(y)), int(40/distance), (255, 0, 0), 3)
+    if coords is not None and None not in coords:
+        x, y, z = coords
+        cv2.circle(img, (int(x), int(y)), int(40/z), (255, 0, 0), 3)
 
-    cv2.imshow('frame', cv2.flip(img, flipCode=1))
+    return img
 
 
 def process(img, conf=None):
