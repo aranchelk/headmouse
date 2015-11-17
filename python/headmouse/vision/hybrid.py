@@ -13,16 +13,20 @@ import numpy as np
 import pkg_resources
 import tempfile
 
+#haar_file = 'haarcascade_frontalface_alt2.xml'
+#haar_file = 'haarcascade_frontalface_alt_tree.xml'
+haar_file = 'haarcascade_frontalface_alt.xml'
+#haar_file = 'haarcascade_frontalface_default.xml'
 
 cascade_file = tempfile.NamedTemporaryFile()
 try:
     cascade_file.write(pkg_resources.resource_stream(
         __name__,
-        '../data/cascades/haarcascade_frontalface_alt.xml'
+        '../data/cascades/' + haar_file
         #'data/cascades/Nariz.xml'
     ).read())
 except:
-    with open('haarcascade_frontalface_alt.xml', 'rb') as f:
+    with open(haar_file, 'rb') as f:
         cascade_file.write(f.read())
 finally:
     cascade_file.flush()
@@ -36,22 +40,64 @@ def midrange(numList):
     return (max(numList) + min(numList))/2
 
 
+
+
 # Todo: Make this generic and place in a shared vision library
 class Vision(_vision.Vision):
 
+    def __init__(self, *args, **kwargs):
+        self.faces = None
+        self.process_count = 0
+        self.process_max_iterations = 50
+
+        super(Vision, self).__init__(*args, **kwargs)
+
+
     def display_image(self):
-        for (x,y,w,h) in self.faces:
-            cv2.rectangle(self.frame,(x,y),(x+w,y+h),(255,0,0),2)
+        self.frame = cv2.cvtColor(self.frame, cv2.COLOR_GRAY2BGR)
+        if self.faces is not None:
+            for (x,y,w,h) in self.faces:
+                cv2.rectangle(self.frame,(x,y),(x+w,y+h),(255,0,0),2)
+
+                rr_loc = (int(x + w/10), int(y + h * .3))
+                rr_rad = h/4
+
+                lr_loc = (int(x + w* 9/10), int(y + h * .3))
+
+                cv2.rectangle(self.frame,(rr_loc[0] - rr_rad, rr_loc[1] - rr_rad),
+                              (rr_loc[0] + rr_rad, rr_loc[1] + rr_rad),(0,255,0),2)
+
+                cv2.circle(self.frame, rr_loc, 2, (0, 255, 0), 3)
+
+                cv2.rectangle(self.frame,(lr_loc[0] - rr_rad, rr_loc[1] - rr_rad),
+                              (lr_loc[0] + rr_rad, lr_loc[1] + rr_rad),(0,255,0),2)
+
+                cv2.circle(self.frame, lr_loc, 2, (0, 255, 0), 3)
 
         cv2.imshow('frame', cv2.flip(self.frame, flipCode=1))
 
     def process(self):
+        # Todo:
+        # * Hard code reflector locations
+        # * Nice color display
+        # * Search only in reflector locations
+        # * Update ROI based on reflector location
+        # * If reflector location is empty, scan
         # ROI example http://docs.opencv.org/master/d7/d8b/tutorial_py_face_detection.html#gsc.tab=0
         if self.frame is not None:
-            gray = cv2.cvtColor(self.frame, cv2.COLOR_BGR2GRAY)
-            self.faces = eye_cascade.detectMultiScale(gray)
+            self.frame = cv2.cvtColor(self.frame, cv2.COLOR_BGR2GRAY)
 
-            self.frame = gray
+            if self.process_count == 0:
+                # Find face
+                self.faces = eye_cascade.detectMultiScale(self.frame)
+
+            if self.faces == ():
+                self.process_count = 0
+            elif self.process_count > self.process_max_iterations:
+                self.process_count = 0
+            else:
+                self.process_count += 1
+
         return 0, 0, 0
 
 
