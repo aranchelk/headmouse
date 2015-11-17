@@ -13,6 +13,8 @@ import numpy as np
 import pkg_resources
 import tempfile
 
+from better_dots import process as bd_process
+
 #haar_file = 'haarcascade_frontalface_alt2.xml'
 #haar_file = 'haarcascade_frontalface_alt_tree.xml'
 haar_file = 'haarcascade_frontalface_alt.xml'
@@ -61,10 +63,7 @@ class Vision(_vision.Vision):
         if self.faces is not None and self.faces != ():
             face_list = self.faces.tolist()
 
-            #print(face_list)
-
             if len(face_list) > 1:
-                print("multiple faces detected.")
                 face_list = [sorted(face_list, key=lambda (x,y,w,h): h, reverse=True)[0]]
 
             for (x,y,w,h) in self.faces:
