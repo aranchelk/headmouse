@@ -24,7 +24,9 @@ def annotate_image(img, dot_map=None, coords=None):
     if dot_map is not None:
         mask = cv2.bitwise_not(dot_map)
 
-        y_dim, x_dim = img.shape
+        # Unknown length of shape depending on color or grayscale image
+        y_dim, x_dim = img.shape[0], img.shape[1]
+
         all_red = np.zeros((y_dim, x_dim, 3), np.uint8)
         all_red[:] = (0, 0, 255)
 

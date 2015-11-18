@@ -47,27 +47,33 @@ class DotPoints:
                 self.x_range = max(self.x_list) - min(self.x_list)
 
 
+def process(img, conf=None):
+    # TODO: real distance, or measured fixed distance value
+    detector = cv2.ORB()
+
+    x, y = None, None
+    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    ret, thresh3 = cv2.threshold(gray, conf['dot_threshold'],255,cv2.THRESH_BINARY)
+
+    kp = detector.detect(thresh3)
+    dp = DotPoints(kp)
+
+    x, y, z = dp.cursor_position()
+
+    return (gray, kp), (x,y,z)
 
 
+def annotate_image(img, kp=None, coords=None):
+    if coords is not None and None not in coords:
+        x, y, z = coords
+        cv2.circle(img, (int(x), int(y)), int(40/z), (255, 0, 0), 3)
+    if kp:
+        img = cv2.drawKeypoints(img,kp,color=(0,255,0), flags=0)
+    return img
 
-def display(faces=None, objects=None, kp=None, coords=(None, None), boxes=None, img=None):
-    if coords:
-        x, y, distance = coords
-    if img is not None:
-        if boxes is not None:
-            for (x0,y0), (x1, y1) in boxes:
-                cv2.rectangle(img, (int(x0),int(y0)), (int(x1),int(y1)), (0, 0, 255))
-        if faces:
-            for xt, yt, w, h in faces:
-                cv2.rectangle(img, (xt, yt), (xt + h, yt + h), (0, 255, 0))
-        if objects is not None:
-            for xt, yt, w, h in objects:
-                cv2.rectangle(img, (xt, yt), (xt + h, yt + h), (0, 255, 0))
-        if kp:
-            img = cv2.drawKeypoints(img,kp,color=(0,255,0), flags=0)
-        if x is not None and y is not None:
-            cv2.circle(img, (int(x), int(y)), int(40/distance), (255, 0, 0), 3)
 
+def display(img=None, kp=None, coords=(None, None)):
+    img = annotate_image(img, kp, coords)
     cv2.imshow('frame', cv2.flip(img, flipCode=1))
 
 
@@ -81,18 +87,8 @@ class Vision(_vision.Vision):
 
     def process(self):
         if self.frame is not None:
+            (self.frame, self.kp), (self.x, self.y, self.z) = process(self.frame, self.config)
             # TODO: real distance, or measured fixed distance value
-            detector = cv2.ORB()
-
-            x, y = None, None
-            gray = cv2.cvtColor(self.frame, cv2.COLOR_BGR2GRAY)
-            #print(self.config['dot_threshold'])
-            ret, thresh3 = cv2.threshold(gray,self.config['dot_threshold'],255,cv2.THRESH_BINARY)
-
-            self.kp = detector.detect(thresh3)
-            dp = DotPoints(self.kp)
-
-            self.x, self.y, self.z = dp.cursor_position()
 
             return self.x, self.y, self.z
 

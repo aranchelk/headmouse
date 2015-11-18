@@ -14,6 +14,10 @@ import pkg_resources
 import tempfile
 
 from better_dots import process as bd_process
+from better_dots import annotate_image as bd_annotate
+
+from naive_dots import process as nd_process
+from naive_dots import annotate_image as nd_annotate
 
 #haar_file = 'haarcascade_frontalface_alt2.xml'
 #haar_file = 'haarcascade_frontalface_alt_tree.xml'
@@ -43,6 +47,10 @@ def midrange(numList):
 
 
 def annotate_dot_search(img, (x,y), rad, color=(0,255,0)):
+    x = int(x)
+    y = int(y)
+    rad = int(rad)
+
     cv2.rectangle(img,(x - rad, y - rad), (x + rad, y + rad), color, 2)
     cv2.circle(img, (x,y), 2, color, 3)
 
@@ -78,7 +86,17 @@ class Vision(_vision.Vision):
                 r_rad = h/4
 
                 annotate_dot_search(self.frame, rr_loc, r_rad)
-                annotate_dot_search(self.frame, lr_loc, r_rad, color=(0,0,255))
+                #annotate_dot_search(self.frame, lr_loc, r_rad, color=(0,0,255))
+
+                #r_roi = self.frame[rr_loc[1] - r_rad:rr_loc[1] + r_rad, rr_loc[0] - r_rad: rr_loc + r_rad]
+                r_roi = self.frame[0:200, 0:200]
+                ((r_gray, r_kp), (rx,ry,rz)) = nd_process(r_roi, conf=self.config)
+                self.frame = nd_annotate(self.frame, kp=r_kp, coords=(rx,ry,rz))
+
+                annotate_dot_search(self.frame, (rx, ry), 5, color=(255,255,0))
+
+
+
 
         cv2.imshow('frame', cv2.flip(self.frame, flipCode=1))
 
