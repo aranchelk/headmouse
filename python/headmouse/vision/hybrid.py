@@ -83,6 +83,17 @@ def rectangle_to_roi(x, y, w, h):
     return y1, y2, x1, x2
 
 
+def darken(x):
+    if x < 80:
+        ret = np.uint8(0)
+    else:
+        ret = np.uint8(x - 80)
+    return ret
+
+
+darken_vec = np.vectorize(darken)
+
+
 def overlay_images(bottom_img, top_img, offset):
     gray_top = cv2.cvtColor(top_img, cv2.COLOR_BGR2GRAY)
     #padded_gray_top =
@@ -98,33 +109,13 @@ def overlay_images(bottom_img, top_img, offset):
 
     # Todo: impement offset
     #np.lib.pad(a, [(y_before,y_after),(x_before,x_after)], 'constant', constant_values=(0,0))
-    padded = np.lib.pad(gray_top, [(0,y_pad),(0, x_pad)], 'constant', constant_values=0)
+    padded = np.lib.pad(darken_vec(gray_top), [(0,y_pad),(0, x_pad)], 'constant', constant_values=0)
 
-
-
-    #print(bottom_img.shape, mask.shape)
-    #print(mask)
-    #mask = cv2.bitwise_not()
-
-    #print(type(mask))
-
-    # Unknown length of shape depending on color or grayscale image
-    #y_dim, x_dim = img.shape[0], img.shape[1]
-
-    #all_red = np.zeros((y_dim, x_dim, 3), np.uint8)
-    #all_red[:] = (0, 0, 255)
-
-    #all_red = cv2.bitwise_and(all_red, all_red, mask=dot_map)
-
-    #c_gray = cv2.cvtColor(img, cv2.cv.CV_GRAY2RGB)
-    #masked_bottom = cv2.bitwise_not(gray_bottom, mask)
-    #print(gray_bottom.shape)
-    #masked_bottom = cv2.bitwise_and(gray_bottom, gray_bottom, mask = mask)
     cv2.rectangle(gray_bottom,(0,0),(top_img.shape[1],top_img.shape[0]),(0,0,0),cv2.cv.CV_FILLED)
 
-    return cv2.add(gray_bottom, padded)
+    print(padded.dtype)
 
-    #return gray_bottom
+    return cv2.add(gray_bottom, padded)
 
 
 # Todo: Make this generic and place in a shared vision library
