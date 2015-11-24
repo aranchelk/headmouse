@@ -84,38 +84,31 @@ def rectangle_to_roi(x, y, w, h):
 
 
 def darken(x):
-    if x < 80:
-        ret = np.uint8(0)
-    else:
-        ret = np.uint8(x - 80)
-    return ret
-
+    x -= 80
+    if x < 0:
+        x = 0
+    return np.uint8(x)
 
 darken_vec = np.vectorize(darken)
 
 
-def overlay_images(bottom_img, top_img, offset):
+def overlay_image(bottom_img, top_img, offset):
     gray_top = cv2.cvtColor(top_img, cv2.COLOR_BGR2GRAY)
-    #padded_gray_top =
+
     gray_bottom = cv2.cvtColor(bottom_img, cv2.COLOR_BGR2GRAY)
-    #print(gray_bottom)
 
-    y_pad = int(bottom_img.shape[0] - top_img.shape[0])
-    x_pad = int(bottom_img.shape[1] - top_img.shape[1])
+    y_padding = (offset[1], int(bottom_img.shape[0] - top_img.shape[0]) - offset[1])
+    x_padding = (offset[0], int(bottom_img.shape[1] - top_img.shape[1]) - offset[0])
 
-    # There's probably a better way to do this.
-    #center_mask = np.zeros((140,220))
-    #center_mask.fill(1)
+    padded = np.lib.pad(gray_top, [y_padding,x_padding], 'constant', constant_values=0)
 
-    # Todo: impement offset
-    #np.lib.pad(a, [(y_before,y_after),(x_before,x_after)], 'constant', constant_values=(0,0))
-    padded = np.lib.pad(darken_vec(gray_top), [(0,y_pad),(0, x_pad)], 'constant', constant_values=0)
-
-    cv2.rectangle(gray_bottom,(0,0),(top_img.shape[1],top_img.shape[0]),(0,0,0),cv2.cv.CV_FILLED)
-
-    print(padded.dtype)
+    cv2.rectangle(gray_bottom,(offset[0],offset[1]),(offset[0] + top_img.shape[1], offset[1] + top_img.shape[0]),(0,0,0),cv2.cv.CV_FILLED)
 
     return cv2.add(gray_bottom, padded)
+
+
+def overlay_roi(base_image, roi):
+    return overlay_image(base_image, roi['image'], roi['offset'])
 
 
 # Todo: Make this generic and place in a shared vision library
@@ -164,18 +157,16 @@ class Vision(_vision.Vision):
             if len(face_list) > 0:
                 face = face_list[0]
 
-                roi = cropped_roi(self.frame, rectangle_to_roi(*face))['image']
+                roi = cropped_roi(self.frame, rectangle_to_roi(*face))
 
-                overlay = overlay_images(self.frame, roi, (0,0))
+                overlay = overlay_roi(self.frame, roi)
 
                 cv2.imshow('roi', cv2.flip(overlay, flipCode=1))
                 pass
 
 
 
-
-
-        cv2.imshow('frame', cv2.flip(self.frame, flipCode=1))
+        #cv2.imshow('frame', cv2.flip(self.frame, flipCode=1))
 
     def process(self):
         # Todo:
