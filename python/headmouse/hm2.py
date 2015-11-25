@@ -116,7 +116,7 @@ if __name__ == '__main__':
                         viz.get_image()
                         coords = viz.process()
 
-                        if None not in coords:
+                        if coords is not None and None not in coords:
                             coords = filters.mirror(coords)
                             abs_pos_x, abs_pos_y, abs_pos_z = coords
                             xy = xy_delta_gen.send((abs_pos_x, abs_pos_y))
