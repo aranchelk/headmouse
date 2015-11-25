@@ -14,12 +14,6 @@ import pkg_resources
 import tempfile
 import math
 
-from better_dots import process as bd_process
-from better_dots import annotate_image as bd_annotate
-
-from naive_dots import process as nd_process
-from naive_dots import annotate_image as nd_annotate
-
 #haar_file = 'haarcascade_frontalface_alt2.xml'
 #haar_file = 'haarcascade_frontalface_alt_tree.xml'
 haar_file = 'haarcascade_frontalface_alt.xml'
@@ -62,12 +56,11 @@ def cropped_roi(img, dimensions):
 
     return {'image':img[y1:y2, x1:x2], 'offset':(x1, y1)}
 
-def normalize_detected(results):
-    #Opencv alternates between returning an ndarray or empty tuple depending, none, or greater results.
-    if results == ():
+def normalize_detected(raw):
+    if raw == ():
         return []
-    else:
-        return results.tolist()
+
+    return raw.tolist()
 
 
 def search_area_to_roi(x, y, x_rad, y_rad):
@@ -80,15 +73,6 @@ def search_area_to_roi(x, y, x_rad, y_rad):
     y2 = y + y_rad
 
     return y1, y2, x1, x2
-
-# def expand_roi((y1, y2, x1, x2), factor):
-#     w = x2 - x1
-#     h = y2 - y1
-#
-#     x_padding = int(w * factor / 2)
-#     y_padding = int(h * factor / 2)
-#
-#     return y1 - y_padding, y2 + y_padding, x1 - x_padding, x2 + x_padding
 
 
 def expand_rectangle((x,y,w,h), factor):
@@ -135,7 +119,7 @@ def rectangle_to_roi(x, y, w, h):
 #     return x, y, w, h
 
 
-def face_to_left_dot((x, y, w, h)):
+def face_to_left_dot(x, y, w, h):
     x += int(w * 0.7)
     y += int(h * 0.14)
 
@@ -180,6 +164,8 @@ def process_dots(threshold_img, offset=(0,0)):
     indexed_dots = np.argwhere(threshold_img) # 75 to 80 without, 66-67 with
 
     # Todo: test for 0 values here
+    if len(indexed_dots) == 0:
+        return None
 
     xs, ys = np.rot90(indexed_dots) # no obvious difference
 
@@ -245,36 +231,35 @@ class Vision(_vision.Vision):
         self.other_faces = None
         self.face = None
         self.process_count = 0
-        self.process_max_iterations = 50
+        self.process_max_iterations = 200
         self.dot_tracker = None
         self.left_dot_boundry = None
+        self.dots = None
 
         super(Vision, self).__init__(*args, **kwargs)
 
     def display_image(self):
-        gray = self.frame
-        color = cv2.cvtColor(self.frame, cv2.COLOR_GRAY2BGR)
+        color = self.color
+
+        if self.other_faces and self.process_count > 120:
+            for f in self.other_faces:
+                annotate_with_rectangle(color, f, color=(50,20,0))
+
+        if self.face and self.process_count > 120:
+            annotate_with_rectangle(color, self.face)
+
+        if self.left_dot_boundry is not None:
+            annotate_with_rectangle(color, self.left_dot_boundry, color=(255,255,0))
+            #annotate_with_rectangle(color, expand_rectangle(self.left_dot_boundry, 1.2), color=(255,255,0))
+        # Todo: fix this
+        # if self.dots is not None and self.left_dot_boundry is not None:
+        #     y1, y2, x1, x2 = rectangle_to_roi(*self.left_dot_boundry)
+        #     color[y1:y2, x1:x2] = annotate_with_dots(color[y1:y2, x1:x2], self.dots)
 
         if self.coords:
             annotate_with_coordinates(color, self.coords, color=(0,255,255))
 
-        # if self.dot_tracker:
-        #     annotate_with_rectangle(color, self.dot_tracker)
-
-        if self.face:
-            annotate_with_rectangle(color, self.face)
-            annotate_with_rectangle(color, self.left_dot_boundry, color=(255,255,0))
-            #annotate_with_rectangle(color, expand_rectangle(self.left_dot_boundry, 1.2), color=(255,255,0))
-
-            #color[y1:y2, x1:x2] = annotate_with_dots(color[y1:y2, x1:x2], dots)
-
-
-            cv2.imshow('roi', cv2.flip(color, flipCode=1))
-            pass
-
-
-
-        #cv2.imshow('frame', cv2.flip(self.frame, flipCode=1))
+        cv2.imshow('frame', cv2.flip(color, flipCode=1))
 
     def process(self):
         self.coords = (0,0,0) # Todo: this should be None, and everything should accept None
@@ -283,7 +268,8 @@ class Vision(_vision.Vision):
         # * If reflector location is empty, scan
         # ROI example http://docs.opencv.org/master/d7/d8b/tutorial_py_face_detection.html#gsc.tab=0
         if self.frame is not None:
-            self.frame = cv2.cvtColor(self.frame, cv2.COLOR_BGR2GRAY)
+            self.color = self.frame
+            self.frame = create_gray_img(self.frame)
 
             # Only find face every n times
             if self.process_count == 0:
@@ -293,14 +279,13 @@ class Vision(_vision.Vision):
                 if faces:
                     if len(faces) > 1:
                         # Tallest face is most likely the operator
-                        faces = [sorted(faces, key=lambda (x,y,w,h): h, reverse=True)[0]]
-                        self.other_faces = faces.pop(0)
-                    else:
-                        other_faces = None
+                        faces.sort(key=lambda x: x[3], reverse=True)
 
                     self.face = faces[0]
+                    self.other_faces = faces[1:]
+                    #print(self.face, self.other_faces)
 
-                    self.left_dot_boundry = face_to_left_dot(self.face)
+                    self.left_dot_boundry = face_to_left_dot(*self.face)
 
                     self.process_count += 1
                 else:
@@ -315,20 +300,31 @@ class Vision(_vision.Vision):
 
         if self.face:
             y1, y2, x1, x2 = rectangle_to_roi(*self.left_dot_boundry)
-            dots = create_threshold_image(self.frame[y1:y2, x1:x2], self.config['dot_threshold'])
-            dot_info = process_dots(dots, offset=(x1, y1))
-            self.coords = dot_info['coords']
-            dot_count = dot_info['count']
+            self.dots = create_threshold_image(self.frame[y1:y2, x1:x2], self.config['dot_threshold'])
+            dot_info = process_dots(self.dots, offset=(x1, y1))
 
-            if dot_count > 0:
-                # Update the roi
-                new_width = dot_info['x_max'] - dot_info['x_min']
-                new_height = dot_info['y_max'] - dot_info['y_min']
+            if dot_info is not None:
+                self.coords = dot_info['coords']
+                dot_count = dot_info['count']
 
-                self.left_dot_boundry = expand_rectangle(
-                    rectangle_from_point((self.coords[0], self.coords[1]), new_height, new_width),
-                    2
-                )
+                if dot_count > 0:
+                    # Todo: Add proper boundry validation
+                    # Validate based on size relative to frame
+                    # Validate on shape, i.e. squareness
+                    # Validate on how many dots are present
+                    # Validate on dots vs size
+
+                    # Update the roi
+                    new_width = dot_info['x_max'] - dot_info['x_min']
+                    new_height = dot_info['y_max'] - dot_info['y_min']
+
+                    self.left_dot_boundry = expand_rectangle(
+                        rectangle_from_point((self.coords[0], self.coords[1]), new_height, new_width),
+                        2
+                    )
+            else:
+                # No dots detected. Search for face on next pass.
+                self.process_count = 0
 
         return self.coords
 
