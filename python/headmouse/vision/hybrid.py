@@ -202,7 +202,7 @@ def process_dots(threshold_img, offset=(0,0)):
 
 
 def annotate_with_rectangle(img, (x, y, w, h), color=(255,0,0)):
-    cv2.rectangle(img, (x,y),(x+w,y+h),color,2)
+    cv2.rectangle(img, (x,y),(x+w,y+h),color,1)
 
 #
 # def annotate_with_roi(img, (y1, y2, x1, x2), color=(200,200,50)):
@@ -284,7 +284,7 @@ class Vision(_vision.Vision):
         #     color[y1:y2, x1:x2] = annotate_with_dots(color[y1:y2, x1:x2], self.dots)
 
         if self.coords:
-            annotate_with_coordinates(color, self.coords, color=(0,255,255))
+            annotate_with_coordinates(color, self.coords, color=(0,0,255))
 
         cv2.imshow('frame', cv2.flip(color, flipCode=1))
 
