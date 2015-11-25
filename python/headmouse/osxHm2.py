@@ -101,7 +101,7 @@ if __name__ == '__main__':
                         viz.get_image()
                         coords = viz.process()
 
-                        if None in coords:
+                        if coords is None or None in coords:
                             continue
 
                         coords = filters.mirror(coords)
