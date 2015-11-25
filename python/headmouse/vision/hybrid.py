@@ -289,7 +289,8 @@ class Vision(_vision.Vision):
         cv2.imshow('frame', cv2.flip(color, flipCode=1))
 
     def process(self):
-        self.coords = None # Todo: this should be None, and everything should accept None
+        # Todo: Change flow so face detection only activates if no dot is found.
+        self.coords = None
         if self.frame is not None:
             self.color = self.frame
             self.frame = create_gray_img(self.frame)
