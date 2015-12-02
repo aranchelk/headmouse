@@ -22,6 +22,11 @@ import filters
 import threading
 import time
 
+# OSX has an error when launching GUI subprocesses
+# If use_config_gui is false, the program will just watch ~/.headmouse
+#use_config_gui = sys.platform != 'darwin'
+use_config_gui = False
+
 config = conf.render()
 output_driver = None
 vision_driver = None
@@ -73,19 +78,33 @@ def watch_gui_process(parent_conn, gui_child_process):
         handle_gui_process_messages(parent_conn, gui_child_process)
 
 
-if __name__ == '__main__':
-    # GUI process setup
-    parent_conn, child_conn = Pipe()
-    gui_child_process = Process(target=gui_menu.initialize, args=(child_conn,))
-    gui_child_process.start()
-    handle_gui_process_messages(parent_conn, gui_child_process, polling_wait=1)
+def watch_config():
+    # Todo: remove global declaration, since dicts are mutable, should work.
+    global config
+    while not needs_shutdown:
+        time.sleep(1)
+        config.update_all(conf.render())
 
-    gui_watcher_thread = threading.Thread(target=watch_gui_process, args=(parent_conn, gui_child_process))
-    gui_watcher_thread.start()
+
+if __name__ == '__main__':
+    if use_config_gui:
+        # GUI process setup
+        parent_conn, child_conn = Pipe()
+        gui_child_process = Process(target=gui_menu.initialize, args=(child_conn,))
+        gui_child_process.start()
+        handle_gui_process_messages(parent_conn, gui_child_process, polling_wait=1)
+
+        gui_watcher_thread = threading.Thread(target=watch_gui_process, args=(parent_conn, gui_child_process))
+        gui_watcher_thread.start()
+    else:
+        print("Gui menu can't be launched directly on OS X, you can launch gui_menu.py in a separete process.")
+        config_file_watcher = threading.Thread(target=watch_config)
+        config_file_watcher.start()
 
     # Application restart involves multiple processes and can be triggered from multiple places.
     def restart():
-        gui_child_process.terminate()
+        if use_config_gui:
+            gui_child_process.terminate()
         python = sys.executable
         os.execl(python, python, * sys.argv)
 
@@ -93,7 +112,12 @@ if __name__ == '__main__':
     xy_delta_gen = filters.relative_movement()
 
     fps = util.simple_fps()
-    send_fps = util.Every_n(60, lambda: parent_conn.send(str( float("{0:.2f}".format(fps.next() * 60)))))
+
+    freq = 60
+    if use_config_gui:
+        send_fps = util.Every_n(feq, lambda: parent_conn.send(str( float("{0:.2f}".format(fps.next() * freq)))))
+    else:
+        send_fps = util.Every_n(freq, lambda: print(str( float("{0:.2f}".format(fps.next() * freq)))))
 
     config.register_callback('output', update_component)
     config.register_callback('algorithm', update_component)
