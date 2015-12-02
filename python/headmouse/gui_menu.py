@@ -14,7 +14,7 @@ pp = pprint.PrettyPrinter(indent=4)
 conn = None
 
 root=Tk()
-current_config = conf.render()
+config = conf.render()
 
 fps_status = StringVar()
 fps_status.set("fps: ...")
@@ -35,12 +35,12 @@ def restart_program(*args):
 
 
 def save_config(*args):
-    conf.save(current_config)
+    conf.save(config)
     set_status_message("Config saved.")
 
 
 def set_conf_parameter(name, value):
-    current_config[name] = value
+    config[name] = value
     #conf.apply_changes()
     send_config()
     set_status_message("Set %s to %s" %(name, str(value)))
@@ -110,7 +110,7 @@ def config_root(root):
 
 def send_config():
     c = {}
-    c.update(current_config)
+    c.update(config)
     if conn is not None:
         conn.send({'config':c})
 
@@ -158,12 +158,12 @@ def initialize(io_pipe=None):
     slider_frame.pack(side=LEFT)
     # Create sliders for numerical parameters from conf
     for name, scale in conf.scale_data.iteritems():
-        add_slider(slider_frame, **{'name':name, 'scale_data':scale, 'initial':current_config[name]})
+        add_slider(slider_frame, **{'name':name, 'scale_data':scale, 'initial':config[name]})
 
     menu_frame = Frame(root, relief=SUNKEN, bd=1)
     menu_frame.pack(side=LEFT)
     for name, options in conf.option_menu_data.iteritems():
-        add_option_menu(menu_frame, name=name, options=options, initial=current_config[name])
+        add_option_menu(menu_frame, name=name, options=options, initial=config[name])
 
 
     root.mainloop()

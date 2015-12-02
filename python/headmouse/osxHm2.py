@@ -10,7 +10,7 @@ import util
 import conf
 import filters
 
-current_config = conf.render()
+config = conf.render()
 output_driver = None
 vision_driver = None
 camera_driver = None
@@ -46,10 +46,10 @@ def set_smoother(smoothing_amount):
 
 def watch_config():
     # Todo: remove global declaration, since dicts are mutable, should work.
-    global current_config
+    global config
     while not needs_shutdown:
         time.sleep(1)
-        current_config.update_all(conf.render())
+        config.update_all(conf.render())
 
 
 t = threading.Thread(target=watch_config)
@@ -72,53 +72,63 @@ if __name__ == '__main__':
     fps.next()
 
     # Todo: Need a fire all callbacks method on observable dict
-    current_config.register_callback('output', lambda k, v: set_output_driver(v))
-    set_output_driver(current_config['output'])
+    config.register_callback('output', lambda k, v: set_output_driver(v))
+    set_output_driver(config['output'])
 
-    current_config.register_callback('algorithm', lambda k, v: set_vision_driver(v))
-    set_vision_driver(current_config['algorithm'])
+    config.register_callback('algorithm', lambda k, v: set_vision_driver(v))
+    set_vision_driver(config['algorithm'])
 
-    current_config.register_callback('camera', lambda k, v: set_camera_driver(v))
-    set_camera_driver(current_config['camera'])
+    config.register_callback('camera', lambda k, v: set_camera_driver(v))
+    set_camera_driver(config['camera'])
 
-    current_config.register_callback('smoothing', lambda k, v: set_smoother(v))
-    set_smoother(current_config['smoothing'])
+    config.register_callback('smoothing', lambda k, v: set_smoother(v))
+    set_smoother(config['smoothing'])
 
     # Todo: Don't reinitialize camera for algorithm change
     while not (needs_shutdown or needs_restart):
-        with camera_driver.Camera(current_config) as cam:
-            with vision_driver.Vision(cam, current_config) as viz:
+        with camera_driver.Camera(config) as cam:
+            with vision_driver.Vision(cam, config) as viz:
                 display_frame = util.Every_n(3, viz.display_image)
-                #config_reloader = util.Every_n(60, reload_config)
 
-                # Todo: when conf run all registered_callbacks method is in place, run it here.
                 needs_reinitialization = False
 
                 while not (needs_reinitialization or needs_shutdown or needs_restart):
                     try:
-
                         # Frame processing
                         viz.get_image()
                         coords = viz.process()
 
-                        if coords is None or None in coords:
-                            continue
+                        # if coords is None or None in coords:
+                        #     continue
+                        #
+                        # coords = filters.mirror(coords)
+                        # abs_pos_x, abs_pos_y, abs_pos_z = coords
+                        #
+                        # xy = xy_delta_gen.send((abs_pos_x, abs_pos_y))
+                        #
+                        # # Todo: add outliers here.
+                        #
+                        # xy = smoother.send(xy)
+                        # xy = filters.accelerate(xy, current_config)
+                        #
+                        #
+                        # output_driver.send_xy(xy)
+                        #
+                        # display_frame.next()
+                        # send_fps.next()
 
-                        coords = filters.mirror(coords)
-                        abs_pos_x, abs_pos_y, abs_pos_z = coords
+                        if coords is not None and None not in coords:
+                            coords = filters.mirror(coords)
+                            abs_pos_x, abs_pos_y, abs_pos_z = coords
+                            xy = xy_delta_gen.send((abs_pos_x, abs_pos_y))
 
-                        xy = xy_delta_gen.send((abs_pos_x, abs_pos_y))
+                            if not filters.detect_outliers(xy, config['max_input_distance']):
+                                xy = smoother.send(xy)
+                                xy = filters.accelerate(xy, config)
 
-                        # Todo: add outliers here.
-
-                        xy = smoother.send(xy)
-                        xy = filters.accelerate(xy, current_config)
-
-
-                        output_driver.send_xy(xy)
+                                output_driver.send_xy(xy)
 
                         display_frame.next()
-                        #config_reloader.next()
                         send_fps.next()
 
                     except KeyboardInterrupt:
