@@ -24,8 +24,7 @@ import time
 
 # OSX has an error when launching GUI subprocesses
 # If use_config_gui is false, the program will just watch ~/.headmouse
-#use_config_gui = sys.platform != 'darwin'
-use_config_gui = False
+use_config_gui = sys.platform != 'darwin'
 
 config = conf.render()
 output_driver = None
@@ -115,7 +114,7 @@ if __name__ == '__main__':
 
     freq = 60
     if use_config_gui:
-        send_fps = util.Every_n(feq, lambda: parent_conn.send(str( float("{0:.2f}".format(fps.next() * freq)))))
+        send_fps = util.Every_n(freq, lambda: parent_conn.send(str( float("{0:.2f}".format(fps.next() * freq)))))
     else:
         send_fps = util.Every_n(freq, lambda: print(str( float("{0:.2f}".format(fps.next() * freq)))))
 
