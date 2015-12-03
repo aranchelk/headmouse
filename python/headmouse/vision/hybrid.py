@@ -75,7 +75,7 @@ def search_area_to_roi(x, y, x_rad, y_rad):
     return y1, y2, x1, x2
 
 
-def expand_rectangle((x,y,w,h), factor):
+def expand_rectangle_from_center((x,y,w,h), factor):
     h_delta = h * factor
     w_delta = w * factor
 
@@ -86,6 +86,11 @@ def expand_rectangle((x,y,w,h), factor):
     w = int(round(w + w_delta))
 
     return x, y, w, h
+
+
+def expand_rectangle_from_corner((x,y,w,h), factor):
+    return int(factor * x), int(factor * y), int(factor * w), int(factor * h)
+
 
 
 def rectangle_from_point(center, w, h):
@@ -106,21 +111,18 @@ def rectangle_to_roi(x, y, w, h):
     return y1, y2, x1, x2
 
 
-# def rectangle_morph_face_to_glasses((x, y, w, h)):
-#     x_delta = int(w * 0.2)
-#     y_delta = int(h * -0.1)
-#
-#     x -= x_delta
-#     w += 2 * x_delta
-#
-#     y -= y_delta
-#     h += 2 * y_delta
-#
-#     return x, y, w, h
-
-
 def face_to_left_dot(x, y, w, h):
     x += int(w * 0.7)
+    y += int(h * 0.14)
+
+    size = int(w * 0.4)
+    w = size
+    h = size
+
+    return x, y, w, h
+
+def face_to_right_dot(x, y, w, h):
+    x -= int(w * 0.1)
     y += int(h * 0.14)
 
     size = int(w * 0.4)
@@ -251,6 +253,12 @@ def validate_dot_boundry(dot_info, camera_dimensions):
     return True
 
 
+def shrink_to_width(img, width):
+    factor = float(width) / img.shape[1]
+    height = int(img.shape[0] * factor)
+    return cv2.resize(img, (width,height), interpolation=cv2.INTER_AREA), factor
+
+
 # Todo: Make this generic and place in a shared vision library
 class Vision(_vision.Vision):
 
@@ -292,24 +300,29 @@ class Vision(_vision.Vision):
         # Todo: Change flow so face detection only activates if no dot is found.
         self.coords = None
         if self.frame is not None:
+
             self.color = self.frame
             self.frame = create_gray_img(self.frame)
 
             # Only find face every n times
             if self.process_count == 0:
                 # Find face
-                faces = normalize_detected(eye_cascade.detectMultiScale(self.frame))
+                # Shrinking image for faster face detection (about 30x faster).
+                tiny_gray, factor = shrink_to_width(self.frame, 120)
+                faces = normalize_detected(eye_cascade.detectMultiScale(tiny_gray))
 
                 if faces:
                     if len(faces) > 1:
                         # Tallest face is most likely the operator
                         faces.sort(key=lambda x: x[3], reverse=True)
 
-                    self.face = faces[0]
+                    self.face = expand_rectangle_from_corner(faces[0], 1/factor)
+
                     self.other_faces = faces[1:]
                     #print(self.face, self.other_faces)
 
-                    self.left_dot_boundry = face_to_left_dot(*self.face)
+                    #self.left_dot_boundry = face_to_left_dot(*self.face)
+                    self.left_dot_boundry = face_to_right_dot(*self.face)
 
                     self.process_count += 1
                 else:
@@ -341,10 +354,10 @@ class Vision(_vision.Vision):
                     # Update the roi
 
 
-                    self.left_dot_boundry = expand_rectangle(
+                    self.left_dot_boundry = expand_rectangle_from_center(
                         rectangle_from_point((self.coords[0], self.coords[1]),
                                              dot_info['footprint'][0], dot_info['footprint'][1]),
-                        2
+                        3
                     )
                 else:
                     print("validation failed.")

@@ -75,31 +75,9 @@ class Vision(_vision.Vision):
     def process(self):
         (x,y,z) = (0,0,0)
         if self.frame is not None:
-        #     gray = cv2.cvtColor(self.frame, cv2.COLOR_BGR2GRAY)
-        #     ret, thresh3 = cv2.threshold(gray,self.config['dot_threshold'],255,cv2.THRESH_BINARY)
-        #
-        #     indexed_dots = np.argwhere(thresh3) # 75 to 80 without, 66-67 with
-        #     xs, ys = np.rot90(indexed_dots) # no obvious difference
-        #
-        #     try:
-        #         self.x = (np.ndarray.max(xs) + np.ndarray.min(xs))/2
-        #         self.y = (np.ndarray.max(ys) + np.ndarray.min(ys))/2
-        #     except ValueError:
-        #         # This is indicative of an image with no dots, this is okay.
-        #         self.x = 0
-        #         self.y = 0
-        #         pass
-        #
-        #     # TODO: real distance, or measured fixed distance value
-        #     self.z = 10
-        #
-        #     self.dots = thresh3
-        #     self.frame = gray
-        #
-        #     return self.x, self.y, self.z
-            ((self.frame, self.dots),(x,y,z)) = process(self.frame, self.config)
+            ((self.frame, self.dots),(self.x, self.y, self.z)) = process(self.frame, self.config)
 
-        return x, y, z
+        return self.x, self.y, self.z
 
 
 if __name__ == "__main__":

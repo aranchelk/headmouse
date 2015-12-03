@@ -31,20 +31,21 @@ output_driver = None
 vision_driver = None
 camera_driver = None
 smoother = None
-needs_reinitialization = False
+needs_camera_reinit = False
+needs_vision_reinit = False
 needs_shutdown = False
 needs_restart = False
 
 
 def update_component(c_name, c_value):
-    global smoother, camera_driver, vision_driver, output_driver, needs_reinitialization
+    global smoother, camera_driver, vision_driver, output_driver, needs_camera_reinit, needs_vision_reinit
 
     if c_name == 'camera':
         camera_driver = __import__('cameras.' + c_value).__dict__[c_value]
-        needs_reinitialization=True
+        needs_camera_reinit = True
     elif c_name == 'algorithm':
         vision_driver = __import__('vision.' + c_value).__dict__[c_value]
-        needs_reinitialization=True
+        needs_vision_reinit = True
     elif c_name == 'output':
         output_driver = __import__('output_drivers.' + c_value).__dict__[c_value]
     elif c_name == 'smoothing':
@@ -125,37 +126,40 @@ if __name__ == '__main__':
 
     config.execute_all_callbacks()
 
-    # Todo: Don't reinitialize camera for algorithm change
+    # Todo: See if there's a cleaner way to structure the nested whiles, approval of 3136 would have been nice.
     while not (needs_shutdown or needs_restart):
         with camera_driver.Camera(config) as cam:
-            with vision_driver.Vision(cam, config) as viz:
-                display_frame = util.Every_n(4, viz.display_image)
+            needs_camera_reinit = False
+            while not (needs_camera_reinit or needs_shutdown or needs_restart):
+                with vision_driver.Vision(cam, config) as viz:
+                    needs_vision_reinit = False
 
-                needs_reinitialization = False
+                    display_frame = util.Every_n(4, viz.display_image)
 
-                while not (needs_reinitialization or needs_shutdown or needs_restart):
-                    try:
-                        # Frame processing
-                        viz.get_image()
-                        coords = viz.process()
+                    while not (needs_vision_reinit or needs_camera_reinit or needs_shutdown or needs_restart):
 
-                        if coords is not None and None not in coords:
-                            coords = filters.mirror(coords)
-                            abs_pos_x, abs_pos_y, abs_pos_z = coords
-                            xy = xy_delta_gen.send((abs_pos_x, abs_pos_y))
+                        try:
+                            # Frame processing
+                            viz.get_image()
+                            coords = viz.process()
 
-                            if not filters.detect_outliers(xy, config['max_input_distance']):
-                                xy = smoother.send(xy)
-                                xy = filters.accelerate(xy, config)
+                            if coords is not None and None not in coords:
+                                coords = filters.mirror(coords)
+                                abs_pos_x, abs_pos_y, abs_pos_z = coords
+                                xy = xy_delta_gen.send((abs_pos_x, abs_pos_y))
 
-                                output_driver.send_xy(xy)
+                                if not filters.detect_outliers(xy, config['max_input_distance']):
+                                    xy = smoother.send(xy)
+                                    xy = filters.accelerate(xy, config)
 
-                        display_frame.next()
-                        send_fps.next()
+                                    output_driver.send_xy(xy)
 
-                    except KeyboardInterrupt:
-                        needs_restart = False
-                        needs_shutdown = True
+                            display_frame.next()
+                            send_fps.next()
+
+                        except KeyboardInterrupt:
+                            needs_restart = False
+                            needs_shutdown = True
 
     if needs_restart:
         restart()
