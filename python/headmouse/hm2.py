@@ -164,5 +164,6 @@ if __name__ == '__main__':
     if needs_restart:
         restart()
 
-    gui_child_process.terminate()
+    if use_config_gui:
+        gui_child_process.terminate()
     sys.exit()

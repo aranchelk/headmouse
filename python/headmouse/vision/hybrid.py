@@ -334,37 +334,36 @@ class Vision(_vision.Vision):
             else:
                 self.process_count += 1
 
+            if self.face:
+                y1, y2, x1, x2 = rectangle_to_roi(*self.left_dot_boundry)
+                self.dots = create_threshold_image(self.frame[y1:y2, x1:x2], self.config['dot_threshold'])
+                dot_info = process_dots(self.dots, offset=(x1, y1))
 
-        if self.face:
-            y1, y2, x1, x2 = rectangle_to_roi(*self.left_dot_boundry)
-            self.dots = create_threshold_image(self.frame[y1:y2, x1:x2], self.config['dot_threshold'])
-            dot_info = process_dots(self.dots, offset=(x1, y1))
+                if dot_info is not None:
+                    self.coords = dot_info['coords']
+                    dot_count = dot_info['count']
 
-            if dot_info is not None:
-                self.coords = dot_info['coords']
-                dot_count = dot_info['count']
+                    if validate_dot_boundry(dot_info, self.config['camera_dimensions']):
+                        # Todo: Add proper boundry validation
+                        # Validate based on size relative to frame
+                        # Validate on shape, i.e. squareness
+                        # Validate on how many dots are present
+                        # Validate on dots vs size
 
-                if validate_dot_boundry(dot_info, self.config['camera_dimensions']):
-                    # Todo: Add proper boundry validation
-                    # Validate based on size relative to frame
-                    # Validate on shape, i.e. squareness
-                    # Validate on how many dots are present
-                    # Validate on dots vs size
-
-                    # Update the roi
+                        # Update the roi
 
 
-                    self.left_dot_boundry = expand_rectangle_from_center(
-                        rectangle_from_point((self.coords[0], self.coords[1]),
-                                             dot_info['footprint'][0], dot_info['footprint'][1]),
-                        3
-                    )
+                        self.left_dot_boundry = expand_rectangle_from_center(
+                            rectangle_from_point((self.coords[0], self.coords[1]),
+                                                 dot_info['footprint'][0], dot_info['footprint'][1]),
+                            3
+                        )
+                    else:
+                        print("validation failed.")
+                        self.process_count = 0
                 else:
-                    print("validation failed.")
+                    # No dots detected. Search for face on next pass.
                     self.process_count = 0
-            else:
-                # No dots detected. Search for face on next pass.
-                self.process_count = 0
 
         return self.coords
 
