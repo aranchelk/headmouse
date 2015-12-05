@@ -92,7 +92,6 @@ def expand_rectangle_from_corner((x,y,w,h), factor):
     return int(factor * x), int(factor * y), int(factor * w), int(factor * h)
 
 
-
 def rectangle_from_point(center, w, h):
     x, y = center
 
@@ -102,6 +101,11 @@ def rectangle_from_point(center, w, h):
     return x, y, w, h
 
 
+def rectangle_from_dot_info(dot_info):
+    return rectangle_from_point((dot_info['coords'][0], dot_info['coords'][1]),
+                                dot_info['footprint'][0], dot_info['footprint'][1])
+
+
 def rectangle_to_roi(x, y, w, h):
     y1 = y
     y2 = y + h
@@ -109,6 +113,21 @@ def rectangle_to_roi(x, y, w, h):
     x2 = x + w
 
     return y1, y2, x1, x2
+
+
+def face_to_dot_boundary(xywh, xywh_factors):
+    x, y, w, h = xywh
+    fx, fy, fw, fh = xywh_factors
+
+    rx = x + int(w * fx)
+    ry = y + int(h * fy)
+
+    # Todo: use both fw and fh
+    size = int(w * fw)
+    rw = size
+    rh = size
+
+    return rx, ry, rw, rh
 
 
 def face_to_left_dot(x, y, w, h):
@@ -166,7 +185,7 @@ def process_dots(threshold_img, offset=(0,0)):
     indexed_dots = np.argwhere(threshold_img) # 75 to 80 without, 66-67 with
 
     if len(indexed_dots) == 0:
-        return None
+        return {'coords': None, 'count': 0, 'footprint': None}
 
     xs, ys = np.rot90(indexed_dots) # no obvious difference
 
@@ -195,7 +214,7 @@ def process_dots(threshold_img, offset=(0,0)):
     y_min = np.ndarray.min(ys) + offset[1]
     y_max = np.ndarray.max(ys) + offset[1]
 
-    footprint =(x_max - x_min + 1, y_max - y_min + 1)
+    footprint = (x_max - x_min + 1, y_max - y_min + 1)
 
     return {'coords': (x,y,z),
             'count': len(indexed_dots),
@@ -230,7 +249,11 @@ def annotate_with_dots(color_img, dot_map, color=(0,255,0)):
 
     return cv2.add(masked_gray, all_red)
 
-def validate_dot_boundry(dot_info, camera_dimensions):
+
+def validate_dot_boundary(dot_info, camera_dimensions):
+    if dot_info == None:
+        return False
+
     if dot_info['coords'] is None:
         return False
 
@@ -242,13 +265,18 @@ def validate_dot_boundry(dot_info, camera_dimensions):
     if ratio < 0.6:
         return False
 
+    # Todo: Add proper boundary validation
+    # Validate based on size relative to frame
+    # Validate on shape, i.e. squareness
+    # Validate on how many dots are present
+    # Validate on dots vs size
+
     # Todo: make this a configuration, max relative dot size.
     if dot_info['footprint'][0] > camera_dimensions[0] * 0.14:
         return False
 
     if dot_info['footprint'][1] > camera_dimensions[1] * 0.14:
         return False
-
 
     return True
 
@@ -257,6 +285,16 @@ def shrink_to_width(img, width):
     factor = float(width) / img.shape[1]
     height = int(img.shape[0] * factor)
     return cv2.resize(img, (width,height), interpolation=cv2.INTER_AREA), factor
+
+
+def image_to_dot_info(img, dot_boundary, threshold):
+    y1, y2, x1, x2 = rectangle_to_roi(*dot_boundary)
+    dots = create_threshold_image(img[y1:y2, x1:x2], threshold)
+
+    dot_info = process_dots(dots, offset=(x1, y1))
+    dot_info['dot_boundary'] = dot_boundary
+
+    return dot_info
 
 
 # Todo: Make this generic and place in a shared vision library
@@ -268,8 +306,10 @@ class Vision(_vision.Vision):
         self.process_count = 0
         self.process_max_iterations = 2000
         self.dot_tracker = None
-        self.left_dot_boundry = None
+        self.dot_boundaries = None
         self.dots = None
+        self.color = None
+        self.coords = None
 
         super(Vision, self).__init__(*args, **kwargs)
 
@@ -283,12 +323,13 @@ class Vision(_vision.Vision):
         if self.face and self.process_count < 100:
             annotate_with_rectangle(color, self.face)
 
-        if self.left_dot_boundry is not None:
-            annotate_with_rectangle(color, self.left_dot_boundry, color=(255,255,0))
-            #annotate_with_rectangle(color, expand_rectangle(self.left_dot_boundry, 1.2), color=(255,255,0))
+        if self.dot_boundaries is not None and len(self.dot_boundaries) > 0:
+            for db in self.dot_boundaries:
+                annotate_with_rectangle(color, db, color=(255,255,0))
+            #annotate_with_rectangle(color, expand_rectangle(self.left_dot_boundary, 1.2), color=(255,255,0))
         # Todo: fix this
-        # if self.dots is not None and self.left_dot_boundry is not None:
-        #     y1, y2, x1, x2 = rectangle_to_roi(*self.left_dot_boundry)
+        # if self.dots is not None and self.left_dot_boundary is not None:
+        #     y1, y2, x1, x2 = rectangle_to_roi(*self.left_dot_boundary)
         #     color[y1:y2, x1:x2] = annotate_with_dots(color[y1:y2, x1:x2], self.dots)
 
         if self.coords:
@@ -299,6 +340,9 @@ class Vision(_vision.Vision):
     def process(self):
         # Todo: Change flow so face detection only activates if no dot is found.
         self.coords = None
+
+        dot_descriptors = [(0.7, 0.14, 0.4, 0.4), (-0.1, 0.14, 0.4, 0.4)] # x,y,w,h
+
         if self.frame is not None:
 
             self.color = self.frame
@@ -317,53 +361,61 @@ class Vision(_vision.Vision):
                         faces.sort(key=lambda x: x[3], reverse=True)
 
                     self.face = expand_rectangle_from_corner(faces[0], 1/factor)
-
                     self.other_faces = faces[1:]
-                    #print(self.face, self.other_faces)
 
-                    #self.left_dot_boundry = face_to_left_dot(*self.face)
-                    self.left_dot_boundry = face_to_right_dot(*self.face)
+                    self.dot_boundaries = map(lambda dd: face_to_dot_boundary(self.face, dd), dot_descriptors)
 
                     self.process_count += 1
                 else:
                     # If no faces were detected, try again on next pass.
                     self.process_count = 0
 
-            elif self.process_count > self.process_max_iterations:
-                self.process_count = 0
-            else:
-                self.process_count += 1
-
+            # should be: if self.process_count != 0
             if self.face:
-                y1, y2, x1, x2 = rectangle_to_roi(*self.left_dot_boundry)
-                self.dots = create_threshold_image(self.frame[y1:y2, x1:x2], self.config['dot_threshold'])
-                dot_info = process_dots(self.dots, offset=(x1, y1))
-
-                if dot_info is not None:
-                    self.coords = dot_info['coords']
-                    dot_count = dot_info['count']
-
-                    if validate_dot_boundry(dot_info, self.config['camera_dimensions']):
-                        # Todo: Add proper boundry validation
-                        # Validate based on size relative to frame
-                        # Validate on shape, i.e. squareness
-                        # Validate on how many dots are present
-                        # Validate on dots vs size
-
-                        # Update the roi
+                dot_info_list = map(lambda db: image_to_dot_info(self.frame, db, self.config['dot_threshold']),
+                               self.dot_boundaries)
 
 
-                        self.left_dot_boundry = expand_rectangle_from_center(
-                            rectangle_from_point((self.coords[0], self.coords[1]),
-                                                 dot_info['footprint'][0], dot_info['footprint'][1]),
-                            3
-                        )
-                    else:
-                        print("validation failed.")
-                        self.process_count = 0
+
+                dot_coords = filter(lambda c: c is not None, map(lambda di: di['coords'], dot_info_list))
+
+                if len(dot_coords) > 0:
+                    x = np.mean(map(lambda (x,y,z): x, dot_coords))
+                    y = np.mean(map(lambda (x,y,z): y, dot_coords))
+                    z = np.mean(map(lambda (x,y,z): z, dot_coords))
+
+                    self.coords = (x, y, z)
                 else:
-                    # No dots detected. Search for face on next pass.
+                    self.coords = None
                     self.process_count = 0
+
+                valid_di = filter(lambda di: validate_dot_boundary(di, self.config['camera_dimensions']), dot_info_list)
+
+                print(len(valid_di), (dot_descriptors))
+
+                if len(valid_di) != len(dot_descriptors):
+                    # Some points are not being tracked, Try to reaquire soon.
+                    iterations_until_retry = 10
+
+                    if (self.process_count + iterations_until_retry < self.process_max_iterations):
+                        self.process_count = self.process_max_iterations - iterations_until_retry
+
+
+
+
+                self.dot_boundaries = map(lambda di: expand_rectangle_from_center(rectangle_from_dot_info(di), 3),
+                                          valid_di)
+
+            else:
+                # No dots detected. Search for face on next pass.
+                self.process_count = 0
+
+        if self.process_count > self.process_max_iterations:
+            self.process_count = 0
+        else:
+            self.process_count += 1
+
+        #print(self.process_count)
 
         return self.coords
 
