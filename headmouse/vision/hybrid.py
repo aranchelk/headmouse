@@ -350,6 +350,8 @@ class Vision(_vision.Vision):
 
             # Only find face every n times
             if self.process_count == 0:
+                self.face = None
+                self.dot_boundaries = []
                 # Find face
                 # Shrinking image for faster face detection (about 30x faster).
                 tiny_gray, factor = shrink_to_width(self.frame, 120)
@@ -368,54 +370,48 @@ class Vision(_vision.Vision):
                     self.process_count += 1
                 else:
                     # If no faces were detected, try again on next pass.
-                    self.process_count = 0
+                    self.process_count = -1
 
-            # should be: if self.process_count != 0
-            if self.face:
+            if self.process_count > 0 or self.face:
                 dot_info_list = map(lambda db: image_to_dot_info(self.frame, db, self.config['dot_threshold']),
                                self.dot_boundaries)
 
-
-
-                dot_coords = filter(lambda c: c is not None, map(lambda di: di['coords'], dot_info_list))
-
-                if len(dot_coords) > 0:
-                    x = np.mean(map(lambda (x,y,z): x, dot_coords))
-                    y = np.mean(map(lambda (x,y,z): y, dot_coords))
-                    z = np.mean(map(lambda (x,y,z): z, dot_coords))
-
-                    self.coords = (x, y, z)
-                else:
-                    self.coords = None
-                    self.process_count = 0
-
                 valid_di = filter(lambda di: validate_dot_boundary(di, self.config['camera_dimensions']), dot_info_list)
 
-                print(len(valid_di), (dot_descriptors))
+                if len(valid_di) == 0:
+                    self.process_count = -1
+                else:
 
-                if len(valid_di) != len(dot_descriptors):
-                    # Some points are not being tracked, Try to reaquire soon.
-                    iterations_until_retry = 10
+                    if len(valid_di) != len(dot_descriptors):
+                        # Some points are not being tracked, Try to reaquire soon.
+                        iterations_until_retry = 10
 
-                    if (self.process_count + iterations_until_retry < self.process_max_iterations):
-                        self.process_count = self.process_max_iterations - iterations_until_retry
+                        if self.process_count + iterations_until_retry < self.process_max_iterations:
+                            self.process_count = self.process_max_iterations - iterations_until_retry
 
+                self.all_dot_coords = filter(lambda c: c is not None, map(lambda di: di['coords'], valid_di))
 
+                if len(self.all_dot_coords) > 0:
+                    x = np.mean(map(lambda (x,y,z): x, self.all_dot_coords))
+                    y = np.mean(map(lambda (x,y,z): y, self.all_dot_coords))
+                    z = np.mean(map(lambda (x,y,z): z, self.all_dot_coords))
 
+                    self.coords = (x, y, z)
 
-                self.dot_boundaries = map(lambda di: expand_rectangle_from_center(rectangle_from_dot_info(di), 3),
+                    self.dot_boundaries = map(lambda di: expand_rectangle_from_center(rectangle_from_dot_info(di), 3),
                                           valid_di)
+                else:
+                    self.coords = None
+                    self.process_count = -1
 
             else:
                 # No dots detected. Search for face on next pass.
-                self.process_count = 0
+                self.process_count = -1
 
         if self.process_count > self.process_max_iterations:
             self.process_count = 0
         else:
             self.process_count += 1
-
-        #print(self.process_count)
 
         return self.coords
 
