@@ -2,6 +2,12 @@
 
 # Intended to be run with v4l2 loopback camera
 
+# Todos:
+# * modprobe -r v4l2loopback on startup
+# * find v4l2loopback
+# * method to convert camera /dev/video paths to opencv ids
+# * unhardcode everything
+
 import cv2
 import time
 import uuid

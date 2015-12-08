@@ -8,8 +8,12 @@
 # Todo: Think of ways to make needs_ vars more elegant, maybe a service.
 # Todo: consider renaming vision and camera dirs with _drivers
 # Todo: resolution selection in GUI
+# Todo: camera device selection in GUI
+# Todo: callbacks on resolution and camera device selection to restart camera
 # Todo: save profiles
 # Todo: auto-config
+# Todo: when on os-x attempt to open scratch file before main config file
+# Todo: graceful handling of Arduino wait
 
 from __future__ import print_function
 import sys

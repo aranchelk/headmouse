@@ -9,6 +9,7 @@ import sys
 import time
 
 # Todo: set up a thread to watch for ctrl+c and exit promptly.
+# Todo: when launched directly, write to scratch file
 
 pp = pprint.PrettyPrinter(indent=4)
 conn = None
