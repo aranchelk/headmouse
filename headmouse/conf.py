@@ -4,6 +4,7 @@ import os
 import ConfigParser
 import pkgutil
 from ast import literal_eval as make_tuple
+from cameras import _cam_util
 
 USER_CONFIG_FILE = os.path.expanduser("~/.headmouse")
 config_parser = ConfigParser.SafeConfigParser()
@@ -70,12 +71,15 @@ template_config = {
         'verbosity': 0,
         }
 
+
 # Template config Metadata, currently used for settings GUI rendering, could also be used for validation.
 option_menu_data = {
     # List of valid options
     'algorithm': get_modules_in_dir('vision'),
     'camera': get_modules_in_dir('cameras'),
-    'output': get_modules_in_dir('output_drivers')
+    'output': get_modules_in_dir('output_drivers'),
+    'camera_dimensions': [(320, 240), (640, 480), (800, 600), (1280, 720), (1920, 1080)],
+    'camera_device_id': map(lambda (x,y): x, filter(lambda (x,y): y != 'loopback', _cam_util.get_devices()))
 }
 
 scale_data = {

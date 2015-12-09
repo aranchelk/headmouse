@@ -8,6 +8,8 @@ import os
 import sys
 import time
 
+from ast import literal_eval as make_tuple
+
 # Todo: set up a thread to watch for ctrl+c and exit promptly.
 # Todo: when launched directly, write to scratch file
 
@@ -125,12 +127,21 @@ def check_parent_process():
             time.sleep(.5)
 
 
+
+
 def add_option_menu(root, name=None, options=None, initial=None):
-    str_v =  StringVar(root)
+    str_v = StringVar(root)
     str_v.set(initial) # default value
 
     def callback(*args):
-        set_conf_parameter(name, str_v.get())
+        new_val = str_v.get()
+
+        if isinstance(initial, tuple):
+            new_val = make_tuple(new_val)
+        elif isinstance(initial, int):
+            new_val = int(new_val)
+
+        set_conf_parameter(name, new_val)
 
     str_v.trace('w', callback)
 

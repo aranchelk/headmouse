@@ -54,6 +54,10 @@ def update_component(c_name, c_value):
         output_driver = __import__('output_drivers.' + c_value).__dict__[c_value]
     elif c_name == 'smoothing':
         smoother = filters.ema_smoother(c_value)
+    elif c_name == 'camera_dimensions':
+        needs_camera_reinit = True
+    elif c_name == 'camera_device_id':
+        needs_camera_reinit = True
 
 
 def handle_gui_process_messages(parent_conn, gui_child_process, polling_wait=.001):
@@ -127,6 +131,8 @@ if __name__ == '__main__':
     config.register_callback('algorithm', update_component)
     config.register_callback('camera', update_component)
     config.register_callback('smoothing', update_component)
+    config.register_callback('camera_dimensions', update_component)
+    config.register_callback('camera_device_id', update_component)
 
     config.execute_all_callbacks()
 
