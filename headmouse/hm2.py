@@ -15,6 +15,8 @@
 # Todo: when on os-x attempt to open scratch file before main config file
 # Todo: graceful handling of Arduino wait
 
+# Todo: don't throw away good dots in hybrid mode if face-find fails
+
 from __future__ import print_function
 import sys
 import os
@@ -164,7 +166,8 @@ if __name__ == '__main__':
 
                                     output_driver.send_xy(xy)
 
-                            display_frame.next()
+                            if config['display']:
+                                display_frame.next()
                             send_fps.next()
 
                         except KeyboardInterrupt:

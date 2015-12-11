@@ -14,29 +14,10 @@ import pkg_resources
 import tempfile
 import math
 
-haar_file = ['haarcascade_frontalface_alt.xml', 'haarcascade_frontalface_alt_tree.xml',
-             'haarcascade_frontalface_alt2.xml', 'haarcascade_frontalface_default.xml'][0]
-
-cascade_file = tempfile.NamedTemporaryFile()
-try:
-    cascade_file.write(pkg_resources.resource_stream(
-        __name__,
-        '../data/cascades/' + haar_file
-        #'data/cascades/Nariz.xml'
-    ).read())
-except:
-    with open(haar_file, 'rb') as f:
-        cascade_file.write(f.read())
-finally:
-    cascade_file.flush()
-
-EYE_CASCADE_FILE = cascade_file.name
-eye_cascade_file=EYE_CASCADE_FILE
-eye_cascade = cv2.CascadeClassifier(eye_cascade_file)
-
-
-def midrange(numList):
-    return (max(numList) + min(numList))/2
+haar_files = ['haarcascade_frontalface_alt.xml', 'haarcascade_frontalface_alt_tree.xml',
+              'haarcascade_frontalface_alt2.xml', 'haarcascade_frontalface_default.xml']
+haar_path = pkg_resources.resource_filename(__name__,  '../data/cascades/' + haar_files[0])
+eye_cascade = cv2.CascadeClassifier(haar_path)
 
 
 def annotate_dot_search(img, (x,y), rad, color=(0,255,0)):
@@ -48,29 +29,11 @@ def annotate_dot_search(img, (x,y), rad, color=(0,255,0)):
     cv2.circle(img, (x,y), 2, color, 3)
 
 
-def cropped_roi(img, dimensions):
-    # Note, opencv coordinate system, 0,0 is upper right
-    y1, y2, x1, x2 = dimensions
-
-    return {'image':img[y1:y2, x1:x2], 'offset':(x1, y1)}
-
 def normalize_detected(raw):
     if raw == ():
         return []
 
     return raw.tolist()
-
-
-def search_area_to_roi(x, y, x_rad, y_rad):
-    for v in [x,y, x_rad, y_rad]:
-        assert isinstance(v, int)
-
-    x1 = x - x_rad
-    x2 = x + x_rad
-    y1 = y - y_rad
-    y2 = y + y_rad
-
-    return y1, y2, x1, x2
 
 
 def expand_rectangle_from_center((x,y,w,h), factor):
@@ -126,36 +89,6 @@ def face_to_dot_boundary(xywh, xywh_factors):
     rh = size
 
     return rx, ry, rw, rh
-
-
-def face_to_left_dot(x, y, w, h):
-    x += int(w * 0.7)
-    y += int(h * 0.14)
-
-    size = int(w * 0.4)
-    w = size
-    h = size
-
-    return x, y, w, h
-
-def face_to_right_dot(x, y, w, h):
-    x -= int(w * 0.1)
-    y += int(h * 0.14)
-
-    size = int(w * 0.4)
-    w = size
-    h = size
-
-    return x, y, w, h
-
-
-def darken(x):
-    x -= 80
-    if x < 0:
-        x = 0
-    return np.uint8(x)
-
-darken_vec = np.vectorize(darken)
 
 
 def create_gray_img(img):
@@ -295,12 +228,26 @@ def image_to_dot_info(img, dot_boundary, threshold):
     return dot_info
 
 
+def get_valid_dot_info_list(img, boundaries, conf):
+    dot_info_list = map(lambda db: image_to_dot_info(img, db, conf['dot_threshold']), boundaries)
+    valid_di = filter(lambda di: validate_dot_boundary(di, conf['camera_dimensions']), dot_info_list)
+
+    return valid_di
+
+def optimal_dot_boundaries(dot_info_list):
+    if dot_info_list is None or len(dot_info_list) == 0:
+        return []
+
+    return map(lambda di: expand_rectangle_from_center(rectangle_from_dot_info(di), 3), dot_info_list)
+
+
 # Todo: Make this generic and place in a shared vision library
 class Vision(_vision.Vision):
 
     def __init__(self, *args, **kwargs):
         self.other_faces = None
         self.face = None
+        # Todo: instead of using process_count, write a state service.
         self.process_count = 0
         self.process_max_iterations = 2000
         self.dot_tracker = None
@@ -308,6 +255,7 @@ class Vision(_vision.Vision):
         self.dots = None
         self.color = None
         self.coords = None
+        self.dot_info = None
 
         super(Vision, self).__init__(*args, **kwargs)
 
@@ -341,75 +289,89 @@ class Vision(_vision.Vision):
 
         dot_descriptors = [(0.7, 0.14, 0.4, 0.4), (-0.1, 0.14, 0.4, 0.4)] # x,y,w,h
 
-        if self.frame is not None:
+        if self.frame is None:
+            return None
 
-            self.color = self.frame
-            self.frame = create_gray_img(self.frame)
 
-            # Only find face every n times
-            if self.process_count == 0:
-                self.face = None
-                self.dot_boundaries = []
-                # Find face
-                # Shrinking image for faster face detection (about 30x faster).
-                tiny_gray, factor = shrink_to_width(self.frame, 120)
-                faces = normalize_detected(eye_cascade.detectMultiScale(tiny_gray))
+        self.color = self.frame
+        self.frame = create_gray_img(self.frame)
 
-                if faces:
-                    if len(faces) > 1:
-                        # Tallest face is most likely the operator
-                        faces.sort(key=lambda x: x[3], reverse=True)
+        # Only find face every n times
+        if self.process_count == 0:
+            self.face = None
+            # Find face
+            # Shrinking image for faster face detection (about 30x faster).
+            tiny_gray, factor = shrink_to_width(self.frame, 120)
+            faces = normalize_detected(eye_cascade.detectMultiScale(tiny_gray))
 
-                    self.face = expand_rectangle_from_corner(faces[0], 1/factor)
-                    self.other_faces = faces[1:]
+            if faces:
+                if len(faces) > 1:
+                    # Tallest face is most likely the operator
+                    faces.sort(key=lambda x: x[3], reverse=True)
 
-                    self.dot_boundaries = map(lambda dd: face_to_dot_boundary(self.face, dd), dot_descriptors)
+                self.face = expand_rectangle_from_corner(faces[0], 1/factor)
+                self.other_faces = faces[1:]
 
-                    self.process_count += 1
-                else:
-                    # If no faces were detected, try again on next pass.
-                    self.process_count = -1
+                new_dot_boundaries = map(lambda dd: face_to_dot_boundary(self.face, dd), dot_descriptors)
 
-            if self.process_count > 0 or self.face:
-                dot_info_list = map(lambda db: image_to_dot_info(self.frame, db, self.config['dot_threshold']),
-                               self.dot_boundaries)
+                self.dot_info = get_valid_dot_info_list(self.frame, new_dot_boundaries, self.config)
 
-                valid_di = filter(lambda di: validate_dot_boundary(di, self.config['camera_dimensions']), dot_info_list)
+                # If new face position doesn't yield dot info, try detecting within old boundaries
 
-                if len(valid_di) == 0:
-                    self.process_count = -1
-                else:
+                if len(self.dot_info) == 0:
+                    self.dot_info = get_valid_dot_info_list(self.frame, self.dot_boundaries, self.config)
 
-                    if len(valid_di) != len(dot_descriptors):
-                        # Some points are not being tracked, Try to reaquire soon.
-                        iterations_until_retry = 10
+                if len(self.dot_info) == 0:
+                    # If old boundaries don't yield dot_info either, don't do anything else
+                    # process count was not incremented, face detection will occur again on next pass.
+                    # Todo: this is where fallback to pure face detection should occur
+                    self.process_count = 0
+                    return None
 
-                        if self.process_count + iterations_until_retry < self.process_max_iterations:
-                            self.process_count = self.process_max_iterations - iterations_until_retry
-
-                self.all_dot_coords = filter(lambda c: c is not None, map(lambda di: di['coords'], valid_di))
-
-                if len(self.all_dot_coords) > 0:
-                    x = np.mean(map(lambda (x,y,z): x, self.all_dot_coords))
-                    y = np.mean(map(lambda (x,y,z): y, self.all_dot_coords))
-                    z = np.mean(map(lambda (x,y,z): z, self.all_dot_coords))
-
-                    self.coords = (x, y, z)
-
-                    self.dot_boundaries = map(lambda di: expand_rectangle_from_center(rectangle_from_dot_info(di), 3),
-                                          valid_di)
-                else:
-                    self.coords = None
-                    self.process_count = -1
-
+                self.process_count = 1
+            elif self.dot_boundaries == None:
+                self.process_count = 0
+                return None
             else:
-                # No dots detected. Search for face on next pass.
-                self.process_count = -1
+                # If no faces were detected, still try to get dots with old boundaries
+                self.dot_info = get_valid_dot_info_list(self.frame, self.dot_boundaries, self.config)
 
-        if self.process_count > self.process_max_iterations:
-            self.process_count = 0
+                if len(self.dot_info) == 0:
+                    self.process_count = 0
+                    return None
+
+                iterations_until_retry = 10
+                if self.process_count + iterations_until_retry < self.process_max_iterations:
+                    self.process_count = self.process_max_iterations - iterations_until_retry
+
         else:
+            self.dot_info = get_valid_dot_info_list(self.frame, self.dot_boundaries, self.config)
+
+            if len(self.dot_info) == 0:
+                self.process_count = 0
+                return None
+
+            if len(self.dot_info) < len(dot_descriptors):
+                # Some points are not being tracked, Try to reacquire soon.
+                iterations_until_retry = 10
+
+                if self.process_count + iterations_until_retry < self.process_max_iterations:
+                    self.process_count = self.process_max_iterations - iterations_until_retry
+
             self.process_count += 1
+
+            if self.process_count > self.process_max_iterations:
+                self.process_count = 0
+
+
+        self.dot_boundaries = optimal_dot_boundaries(self.dot_info)
+        self.all_dot_coords = map(lambda di: di['coords'], self.dot_info)
+
+        x = np.mean(map(lambda (x,y,z): x, self.all_dot_coords))
+        y = np.mean(map(lambda (x,y,z): y, self.all_dot_coords))
+        z = np.mean(map(lambda (x,y,z): z, self.all_dot_coords))
+
+        self.coords = (x, y, z)
 
         return self.coords
 

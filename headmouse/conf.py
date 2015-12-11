@@ -63,7 +63,7 @@ template_config = {
         'smoothing': 0.90,
         'max_input_distance': 70,
 
-        'distance_scaling': True,
+        #'distance_scaling': True,
         'dot_threshold': 245,
         'camera_gain': 0,
         'camera_brightness': 0,
@@ -98,9 +98,15 @@ def cast_by_template(coll, template):
         if template_key in coll:
             if isinstance(template_val, tuple): # This should be more flexible
                 coll[template_key] = tuple_cast_by_template(coll[template_key], template[template_key])
+            if isinstance(template_val, bool):
+                if coll[template_key] in ['true','True']:
+                    coll[template_key] = True
+                elif coll[template_key] in ['false','False']:
+                    coll[template_key] = False
+                else:
+                    raise ValueError
             else:
                 coll[template_key] = type(template_val)(coll[template_key])
-
     return coll
 
 
