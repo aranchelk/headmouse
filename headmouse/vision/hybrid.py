@@ -14,10 +14,8 @@ import pkg_resources
 import tempfile
 import math
 
-#haar_file = 'haarcascade_frontalface_alt2.xml'
-#haar_file = 'haarcascade_frontalface_alt_tree.xml'
-haar_file = 'haarcascade_frontalface_alt.xml'
-#haar_file = 'haarcascade_frontalface_default.xml'
+haar_file = ['haarcascade_frontalface_alt.xml', 'haarcascade_frontalface_alt_tree.xml',
+             'haarcascade_frontalface_alt2.xml', 'haarcascade_frontalface_default.xml'][0]
 
 cascade_file = tempfile.NamedTemporaryFile()
 try:
