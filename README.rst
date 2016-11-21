@@ -72,6 +72,17 @@ Now install the ``headmouse`` package itself. In the project's `python/` directo
     $ pip install -r requirements
     $ pip install headmouse
 
+**Debian/Ubuntu install**
+
+1. Packages::
+
+    sudo aptitude install v4l2loopback-utils
+    sudo aptitude install python-opencv
+    sudo aptitude install python-pip
+    sudo aptitude install python-dev
+    sudo aptitude install python-tk
+    sudo aptitude install ffmpeg
+
 **PyMouse**
 
 PyMouse is needed for direct mouse control. 

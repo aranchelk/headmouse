@@ -59,6 +59,8 @@ class Camera():
 
         ffmpeg_cmd = "ffmpeg -f video4linux2 -input_format mjpeg -s %(dimensions)s -i %(source_cam)s -vcodec rawvideo -pix_fmt gray -threads 0 -f v4l2 %(loopback)s" % loopback_data
 
+        print "ffmpeg_cmd: " + ffmpeg_cmd
+
         self.stream_transcoder_process = subprocess.Popen(shlex.split(ffmpeg_cmd), stdout=open(os.devnull, 'w'), stderr=subprocess.STDOUT) # something long running
 
         time.sleep(2)

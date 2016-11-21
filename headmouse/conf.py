@@ -50,7 +50,7 @@ template_config = {
         'output': 'null', # output driver
 
         'camera':'simple_camera', # Camera driver
-        'camera_device_id':1,
+        'camera_device_id':0,
         'camera_dimensions': (640, 480),
         'display':True,
 

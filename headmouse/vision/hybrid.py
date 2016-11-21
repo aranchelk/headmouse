@@ -229,6 +229,8 @@ def image_to_dot_info(img, dot_boundary, threshold):
 
 
 def get_valid_dot_info_list(img, boundaries, conf):
+    if boundaries is None:
+        boundaries = []
     dot_info_list = map(lambda db: image_to_dot_info(img, db, conf['dot_threshold']), boundaries)
     valid_di = filter(lambda di: validate_dot_boundary(di, conf['camera_dimensions']), dot_info_list)
 

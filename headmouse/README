@@ -1,0 +1,6 @@
+sudo aptitude install v4l2loopback-utils 
+sudo aptitude install python-opencv
+sudo aptitude install python-pip
+sudo aptitude install python-dev
+sudo aptitude install python-tk
+sudo aptitude install ffmpeg
